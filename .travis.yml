@@ -8,6 +8,7 @@ compiler:
 install: 
 - sudo apt-get update
 - sudo apt-get install liblapack-dev liblas-dev
-- cmake . -DBUILD_EXAMPLES=off -DBUILD_VISUALIZER=off && make
-script: ctest
+- sudo apt-get install doxygen
+- cmake . -DBUILD_EXAMPLES=off -DBUILD_VISUALIZER=off
+script: true
 after_success: ./update-gh-pages.sh
