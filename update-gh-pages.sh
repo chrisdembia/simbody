@@ -10,7 +10,7 @@ if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
     git config --global user.name "Travis"
     git add -f .
     git commit -m "Travis build $TRAVIS_BUILD_NUMBER pushed to gh-pages"
-    git push -fq origin gh-pages
+    git push -fq origin gh-pages > /dev/null
     echo -e "Done updating gh-pages.\n"
 fi
 
