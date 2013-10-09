@@ -4,8 +4,8 @@
 echo -e "Starting to update gh-pages.\n"
 make doxygen
 cp -R html $HOME/html
-rm -rf .
 git checkout -b gh-pages origin/gh-pages
+rm -rf *
 mv $HOME/html/ .
 git config --global user.email "traivs@travis-ci.org"
 git config --global user.name "Travis"
