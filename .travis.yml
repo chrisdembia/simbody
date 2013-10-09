@@ -1,9 +1,13 @@
 language: cpp
-compiler:
-  - gcc
-  - clang
-install:
-  - sudo apt-get update
-  - sudo apt-get install liblapack-dev liblas-dev
-  - cmake . -DBUILD_EXAMPLES=off -DBUILD_VISUALIZER=off && make
+env: 
+  global: 
+    secure: Q+rdj1WCDeGHYcJtRGcKypo5L8qIDUQSITnfctVS0O3o70QVG+bAmtTdXaTP9H+ICLisqhm8FRQ9Kk34hA51RyAitj77UUDOqj8V5kQfpOvHhR7RSvf3AJYjbAeo0CPw8cRJDN2OF6R7AApdhyjRzZS5Nl63pNWWjY4p6KFkw2Q=
+compiler: 
+- gcc
+- clang
+install: 
+- sudo apt-get update
+- sudo apt-get install liblapack-dev liblas-dev
+- cmake . -DBUILD_EXAMPLES=off -DBUILD_VISUALIZER=off && make
 script: ctest
+after_success: ./update-gh-pages.sh
