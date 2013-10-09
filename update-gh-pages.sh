@@ -1,3 +1,4 @@
+#!/bin/sh
 # http://sleepycoders.blogspot.se/2013/03/sharing-travis-ci-generated-files.html
 if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
     echo -e "Starting to update gh-pages.\n"

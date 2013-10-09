@@ -11,4 +11,4 @@ install:
 - sudo apt-get --no-install-recommends install doxygen
 - cmake . -DBUILD_EXAMPLES=off -DBUILD_VISUALIZER=off
 script: true
-after_success: sudo ./update-gh-pages.sh
+after_success: ./update-gh-pages.sh
