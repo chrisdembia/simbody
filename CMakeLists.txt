@@ -85,6 +85,26 @@ SET(BUILD_UNVERSIONED_LIBRARIES TRUE CACHE BOOL
 SET(BUILD_VERSIONED_LIBRARIES FALSE CACHE BOOL
  "Build library names, and assume dependency names, with version numbers?")
 
+# Build libraries in Mac OS X Frameworks. That is, the libraries are intended
+# to be placed in a directory like /Library/Frameworks 
+# or ~/Library/Frameworks.
+OPTION(OSX_FRAMEWORK "Build libraries as Mac OS X Frameworks. Only 
+    unversioned libraries are put into the Frameworks, because 
+    Frameworks have their own system for versioning. So, for this 
+    variable to have an effect, BUILD_UNVERSIONED_LIBRARIES should 
+    be TRUE." OFF)
+
+IF(OSX_FRAMEWORK AND NOT APPLE)
+    MESSAGE("Cannot build OSX Frameworks if not on Mac OS X. "
+        "You should set OSX_FRAMEWORK off.")
+ENDIF()
+
+IF(OSX_FRAMEWORKS AND NOT BUILD_UNVERSIONED_LIBRARIES)
+    MESSAGE("OSX_FRAMEWORKS is ON but BUILD_UNVERSIONED_LIBRARIES is FALSE. "
+        "Thus, nothing will end up in your Frameworks. Perhaps you should "
+        "set BUILD_UNVERSIONED_LIBRARIES as TRUE.")
+ENDIF()
+
 SET(NS)
 IF(BUILD_USING_NAMESPACE)
     SET(NS "${BUILD_USING_NAMESPACE}_")
