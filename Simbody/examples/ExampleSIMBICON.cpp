@@ -117,6 +117,7 @@ public:
     /// to perform further internal initialization.
     void initialize(State& state) {
         state = realizeTopology();
+        getBody(Biped::pelvis).lock(state);
         realizeModel(state);
 
         // Initialization specific to Biped.
@@ -412,8 +413,10 @@ public:
                    OVERRIDE_11
     {
         updateSIMBICONState(s);
-        addInPDControl(s, mobilityForces);
-        addInBalanceControl(s, mobilityForces);
+        //addInPDControl(s, mobilityForces);
+        // TODO addInBalanceControl(s, mobilityForces);
+        coordPDControl(s, Biped::hip_r_flexion, hip_flexion_adduction,
+                1, mobilityForces);
     }
 
     Real calcPotentialEnergy(const State& state) const OVERRIDE_11
@@ -545,12 +548,17 @@ public:
         Real globalTrunkAngle = acos(dot(UnitVec3(YAxis), trunkAxialDir)) / D2R;
 
         // TODO
+        Vec3 globalHipRate = m_biped.getBody(Biped::thigh_r).expressGroundVectorInBodyFrame(state,
+                m_biped.getBody(Biped::thigh_r).getBodyAngularVelocity(state));
 
-        oss << "SIMBICON state " << m_simbicon->getSIMBICONState(state) << 
-            " LContact: " << lContact <<
-            " RContact: " << rContact <<
-            " global trunk angle: " << globalTrunkAngle
-            << std::endl;
+        oss << "SIMBICON state " << m_simbicon->getSIMBICONState(state) <<
+            //"\nLContact: " << lContact <<
+            //"\nRContact: " << rContact <<
+            //"\nglobal trunk angle: " << globalTrunkAngle <<
+            //"\nX: " << globalHipRate[0] <<
+            //"\nY: " << globalHipRate[1] << 
+            "\nZ: " << globalHipRate[2] <<
+            std::endl;
 
         text.setText(oss.str());
         geometry.push_back(text);
@@ -594,12 +602,13 @@ int main(int argc, char **argv)
     // Initialize the system (this is our own method).
     State state;
     biped.initialize(state);
+    biped.getBody(Biped::pelvis).lock(state);
     biped.realize(state, Stage::Instance);
 
     // Set the initial conditions for the biped.
     biped.setTrunkOriginPosition(state, Vec3(0, 1.5, 0));
     // Give the biped some initial forward velocity.
-    biped.setTrunkOriginVelocity(state, Vec3(1, 0, 0));
+    // TODO biped.setTrunkOriginVelocity(state, Vec3(1, 0, 0));
 
     // Show the biped.
     printf("Initial state show. Press ENTER to simulate.\n");
@@ -698,7 +707,7 @@ Biped::Biped()
     //--------------------------------------------------------------------------
 
     // Gravity.
-    Force::Gravity(m_forces, m_matter, -YAxis, 9.8066);
+    // TODO Force::Gravity(m_forces, m_matter, -YAxis, 9.8066);
 
     // Contact with the ground.
     m_matter.updGround().updBody().addContactSurface(
@@ -1568,7 +1577,9 @@ void SIMBICON::addInBalanceControl(const State& s, Vector& mobForces) const
     UnitVec3 forwardDir = m_biped.getBody(Biped::pelvis).getBodyRotation(s).x();
     // TODO points distally proximally?
     UnitVec3 stanceThighAxialDir = stanceThigh->getBodyRotation(s).y();
-    Real globalThighFlexion = acos(dot(forwardDir, stanceThighAxialDir));
+    Real globalHipFlexionAngle = acos(dot(forwardDir, stanceThighAxialDir));
+    Real globalHipFlexionRate = stanceThigh->expressGroundVectorInBodyFrame(s,
+            stanceThigh->getBodyAngularVelocity(s))[ZAxis];
 
     // Directed distally.
     UnitVec3 trunkAxialDir = m_biped.getBody(Biped::trunk).getBodyRotation(s).y();
@@ -1585,7 +1596,7 @@ void SIMBICON::addInBalanceControl(const State& s, Vector& mobForces) const
 
     // Apply PD control to swing hip.
     // ==============================
-    // \theta_d = \theta_0 + c_d d + c_v v
+    // \theta_d = \theta_d0 + c_d d + c_v v
 
     // Balance in the sagittal plane.
     /* TODO INCORRECT
@@ -1623,6 +1634,22 @@ void SIMBICON::addInBalanceControl(const State& s, Vector& mobForces) const
         return force;
     }
     */
+    // Balance in the sagittal plane.
+    Real swingHipFlexionTorque;
+    {
+        // Create scope to scrap temporary variables that we use
+        // only to make the code clearer.
+        Real kp = m_proportionalGains.at(hip_flexion_adduction);
+        Real kv = m_derivativeGains.at(hip_flexion_adduction);
+        Real thetad = m_swh[stateIdx] +
+            m_cd[stateIdx] * massCenterLocFromStanceAnkleForwardMeasure +
+            m_cv[stateIdx] * massCenterLocFromStanceAnkleForwardMeasure;
+        Real theta = globalHipFlexionAngle;
+        Real thetadot =  0; // TODO
+
+        swingHipFlexionTorque = kp * (thetad - theta) + kv * thetadot;
+    }
+    m_biped.addInForce(swing_hip_flexion, swingHipFlexionTorque, mobForces);
 }
 
 
