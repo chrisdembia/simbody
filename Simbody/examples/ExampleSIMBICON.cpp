@@ -117,7 +117,6 @@ public:
     /// to perform further internal initialization.
     void initialize(State& state) {
         state = realizeTopology();
-        getBody(Biped::pelvis).lock(state);
         realizeModel(state);
 
         // Initialization specific to Biped.
@@ -417,6 +416,10 @@ public:
         // TODO addInBalanceControl(s, mobilityForces);
         coordPDControl(s, Biped::hip_r_flexion, hip_flexion_adduction,
                 1, mobilityForces);
+        coordPDControl(s, Biped::hip_r_adduction, hip_flexion_adduction,
+                0, mobilityForces);
+        coordPDControl(s, Biped::hip_r_rotation, hip_flexion_adduction,
+                0, mobilityForces);
     }
 
     Real calcPotentialEnergy(const State& state) const OVERRIDE_11
@@ -550,14 +553,15 @@ public:
         // TODO
         Vec3 globalHipRate = m_biped.getBody(Biped::thigh_r).expressGroundVectorInBodyFrame(state,
                 m_biped.getBody(Biped::thigh_r).getBodyAngularVelocity(state));
+        std::cout << globalHipRate << std::endl;
 
         oss << "SIMBICON state " << m_simbicon->getSIMBICONState(state) <<
             //"\nLContact: " << lContact <<
             //"\nRContact: " << rContact <<
             //"\nglobal trunk angle: " << globalTrunkAngle <<
-            //"\nX: " << globalHipRate[0] <<
+            "\nX: " << globalHipRate[0] <<
             //"\nY: " << globalHipRate[1] << 
-            "\nZ: " << globalHipRate[2] <<
+            //"\nZ: " << globalHipRate[2] <<
             std::endl;
 
         text.setText(oss.str());
@@ -602,11 +606,13 @@ int main(int argc, char **argv)
     // Initialize the system (this is our own method).
     State state;
     biped.initialize(state);
-    biped.getBody(Biped::pelvis).lock(state);
     biped.realize(state, Stage::Instance);
+    biped.getBody(Biped::trunk).lock(state);
+    biped.getBody(Biped::pelvis).lock(state);
+    biped.getBody(Biped::thigh_l).lock(state);
 
     // Set the initial conditions for the biped.
-    biped.setTrunkOriginPosition(state, Vec3(0, 1.5, 0));
+    //biped.setTrunkOriginPosition(state, Vec3(0, 1.5, 0));
     // Give the biped some initial forward velocity.
     // TODO biped.setTrunkOriginVelocity(state, Vec3(1, 0, 0));
 
@@ -625,7 +631,7 @@ int main(int argc, char **argv)
     TimeStepper ts(biped, integ);
     ts.initialize(state);
 
-    ts.stepTo(Infinity);
+    ts.stepTo(0.05); //Infinity);
 
 	return 0;
 }
@@ -707,12 +713,12 @@ Biped::Biped()
     //--------------------------------------------------------------------------
 
     // Gravity.
-    // TODO Force::Gravity(m_forces, m_matter, -YAxis, 9.8066);
+    Force::Gravity(m_forces, m_matter, -YAxis, 9.8066);
 
     // Contact with the ground.
-    m_matter.updGround().updBody().addContactSurface(
-            Transform(Rotation(-0.5 * Pi, ZAxis), Vec3(0)),
-            ContactSurface(ContactGeometry::HalfSpace(), concrete));
+    //m_matter.updGround().updBody().addContactSurface(
+    //        Transform(Rotation(-0.5 * Pi, ZAxis), Vec3(0)),
+    //        ContactSurface(ContactGeometry::HalfSpace(), concrete));
 
 
     //--------------------------------------------------------------------------
