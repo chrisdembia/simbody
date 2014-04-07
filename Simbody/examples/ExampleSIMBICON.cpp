@@ -224,11 +224,11 @@ public:
     void addInForce(const Coordinate coord, const Real force,
             Vector& mobForces) const {
         Real forceAccountingForSymmetry = force;
-        if (coord == hip_r_adduction) {
-            // Negate so that we actually apply an adduction torque (not an
-            // abduction torque).
-            forceAccountingForSymmetry *= -1;
-        }
+        //if (coord == hip_r_adduction) {
+        //    // Negate so that we actually apply an adduction torque (not an
+        //    // abduction torque).
+        //    forceAccountingForSymmetry *= -1;
+        //}
         mobForces[getUIndex(coord)] += forceAccountingForSymmetry;
     }
 
@@ -414,12 +414,12 @@ public:
         updateSIMBICONState(s);
         //addInPDControl(s, mobilityForces);
         // TODO addInBalanceControl(s, mobilityForces);
-        coordPDControl(s, Biped::hip_r_flexion, hip_flexion_adduction,
-                1, mobilityForces);
-        coordPDControl(s, Biped::hip_r_adduction, hip_flexion_adduction,
-                0, mobilityForces);
-        coordPDControl(s, Biped::hip_r_rotation, hip_flexion_adduction,
-                0, mobilityForces);
+        coordPDControl(s, Biped::hip_l_flexion, hip_flexion_adduction,
+                0.5, mobilityForces);
+        //coordPDControl(s, Biped::hip_l_adduction, hip_flexion_adduction,
+        //        -0.5, mobilityForces);
+        //coordPDControl(s, Biped::hip_l_rotation, hip_flexion_adduction,
+        //        0.5, mobilityForces);
     }
 
     Real calcPotentialEnergy(const State& state) const OVERRIDE_11
@@ -551,6 +551,10 @@ public:
         Real globalTrunkAngle = acos(dot(UnitVec3(YAxis), trunkAxialDir)) / D2R;
 
         // TODO
+    UnitVec3 upDir = m_biped.getBody(Biped::pelvis).getBodyRotation(state).y();
+    // TODO points distally proximally?
+    UnitVec3 stanceThighAxialDir = m_biped.getBody(Biped::thigh_r).getBodyRotation(state).y();
+    Real globalHipFlexionAngle = acos(dot(upDir, stanceThighAxialDir)) /D2R;
         Vec3 globalHipRate = m_biped.getBody(Biped::thigh_r).expressGroundVectorInBodyFrame(state,
                 m_biped.getBody(Biped::thigh_r).getBodyAngularVelocity(state));
         std::cout << globalHipRate << std::endl;
@@ -559,7 +563,8 @@ public:
             //"\nLContact: " << lContact <<
             //"\nRContact: " << rContact <<
             //"\nglobal trunk angle: " << globalTrunkAngle <<
-            "\nX: " << globalHipRate[0] <<
+            "\nhip flex angle: " << globalHipFlexionAngle <<
+            //"\nX: " << globalHipRate[0] <<
             //"\nY: " << globalHipRate[1] << 
             //"\nZ: " << globalHipRate[2] <<
             std::endl;
@@ -631,7 +636,7 @@ int main(int argc, char **argv)
     TimeStepper ts(biped, integ);
     ts.initialize(state);
 
-    ts.stepTo(0.05); //Infinity);
+    ts.stepTo(Infinity);
 
 	return 0;
 }
