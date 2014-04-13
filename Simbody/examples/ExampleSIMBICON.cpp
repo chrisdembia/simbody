@@ -414,10 +414,14 @@ public:
         updateSIMBICONState(s);
         //addInPDControl(s, mobilityForces);
         // TODO addInBalanceControl(s, mobilityForces);
-        coordPDControl(s, Biped::hip_l_flexion, hip_flexion_adduction,
-                0.5, mobilityForces);
-        //coordPDControl(s, Biped::hip_l_adduction, hip_flexion_adduction,
-        //        -0.5, mobilityForces);
+        //coordPDControl(s, Biped::hip_l_flexion, hip_flexion_adduction,
+        //        1.57, mobilityForces);
+        //m_biped.addInForce(Biped::hip_l_flexion, 1000,
+        //        mobilityForces);
+        coordPDControl(s, Biped::hip_l_adduction, hip_flexion_adduction,
+                -0.5, mobilityForces);
+        coordPDControl(s, Biped::hip_r_adduction, hip_flexion_adduction,
+                -0.5, mobilityForces);
         //coordPDControl(s, Biped::hip_l_rotation, hip_flexion_adduction,
         //        0.5, mobilityForces);
     }
@@ -614,7 +618,7 @@ int main(int argc, char **argv)
     biped.realize(state, Stage::Instance);
     biped.getBody(Biped::trunk).lock(state);
     biped.getBody(Biped::pelvis).lock(state);
-    biped.getBody(Biped::thigh_l).lock(state);
+    //biped.getBody(Biped::thigh_l).lock(state);
 
     // Set the initial conditions for the biped.
     //biped.setTrunkOriginPosition(state, Vec3(0, 1.5, 0));
@@ -1037,7 +1041,7 @@ Biped::Biped()
     // Trunk.
     // ------
     m_bodies[trunk] = MobilizedBody::Free(
-        m_matter.updGround(), Vec3(0),
+        m_matter.updGround(), Vec3(0, 1.5, 0),
         trunkInfo,          Vec3(0));
 
     // Neck angles are: q0=extension (about z), q1=bending (x), q2=rotation (y).
