@@ -8,11 +8,5 @@ install:
   # command-line options to MSBuild.
   - MSBuild Simbody.sln /m /p:Configuration=Release
 
-build: OFF
-
-test: OFF
-
 test_script:
   - MSBuild Simbody.sln /m /target:RUN_TESTS_PARALLEL /p:Configuration=Release
-
-deploy: OFF
