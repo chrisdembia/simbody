@@ -1,15 +1,15 @@
 platform:
-  - x86
+  - AnyCPU
 
-install:
+install: OFF
+
+build:
   - SET PATH=C:\Program Files (x86)\MSBuild\12.0\bin\;%PATH%
   - cmake . -DBUILD_EXAMPLES=ON -DBUILD_VISUALIZER=OFF
   # See http://msdn.microsoft.com/en-us/library/ms164311.aspx for
   # command-line options to MSBuild.
-  - MSBuild Simbody.sln /m /p:Configuration=Release;Platform=x86
-  - MSBuild Simbody.sln /m /target:RUN_TESTS_PARALLEL /p:Configuration=Release;Platform=x86
-
-build: OFF
+  - MSBuild Simbody.sln /m /p:Configuration=Release
+  - MSBuild Simbody.sln /m /target:RUN_TESTS_PARALLEL /p:Configuration=Release
 
 test: OFF
 
