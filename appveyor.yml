@@ -6,7 +6,7 @@ install:
   - cmake . -DBUILD_EXAMPLES=ON -DBUILD_VISUALIZER=OFF
   # See http://msdn.microsoft.com/en-us/library/ms164311.aspx for
   # command-line options to MSBuild.
-  - MSBuild Simbody.sln /m /p:Configuration=Release
+  - MSBuild Simbody.sln /maxcpucount:8 /p:Configuration=Release
 
 test_script:
-  - MSBuild Simbody.sln /m /target:RUN_TESTS_PARALLEL /p:Configuration=Release
+  - MSBuild Simbody.sln /maxcpucount:8 /target:RUN_TESTS_PARALLEL /p:Configuration=Release
