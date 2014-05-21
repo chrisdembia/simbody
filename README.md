@@ -169,9 +169,9 @@ We give the linear algebra dependencies to you, and Windows comes with the visua
 
     You at least want release libraries (the last 3 count as release), but you can have debug libraries coexist with them. To do this, go through the full installation process twice, once for each configuration. You should install the release configuration *last* to ensure that you use the release version of the `simbody-visualizer` instead of the slow debug version.
 3. Build the API documentation by right-clicking **doxygen** in the **Solution Explorer** and selecting **Build**. This is optional, and you can only do this if you have Doxygen.
-3. Build the project **ALL_BUILD** by right-clicking it in the **Solution Explorer** and selecting **Build**.
-4. Run the tests by right-clicking **RUN_TESTS** and selecting **Build**.
-5. Install Simbody by right-clicking **INSTALL** and selecting **Build**.
+4. Build the project **ALL_BUILD** by right-clicking it in the **Solution Explorer** and selecting **Build**.
+5. Run the tests by right-clicking **RUN_TESTS** and selecting **Build**.
+6. Install Simbody by right-clicking **INSTALL** and selecting **Build**.
 
 #### Play around with examples
 
