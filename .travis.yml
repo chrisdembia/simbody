@@ -1,20 +1,11 @@
 language: cpp
 env:
   - ELEVEN=ON
-  - ELEVEN=OFF
 compiler:
-  - gcc
   - clang
 install:
   - sudo apt-get update
   - sudo apt-get install liblapack-dev liblas-dev
-  # from https://github.com/travis-ci/travis-ci/issues/979.
-  - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-  - sudo apt-get update -qq
-  - if [ "$CXX" = "g++" ]; then sudo apt-get install -qq g++-4.8; fi
-  - if [ "$CXX" = "g++" ]; then export CXX="g++-4.8" CC="gcc-4.8"; fi
-  - if [ "$CXX" = "clang++" ]; then sudo apt-get install -qq clang-3.4; fi
-  - if [ "$CXX" = "clang++" ]; then export CXX="clang++-3.4" CC="clang-3.4"; fi
   # Check which compiler and compiler version we're using.
   - echo "CXX="$CXX
   - echo "CC="$CC
@@ -23,4 +14,4 @@ install:
   # Build.
   - make -j8
 script:
-  - ctest -j8
+  - ctest -R '(BNTTest|TestScalar)'
