@@ -156,13 +156,15 @@ void testIsInf() {
     // Should be Inf if either or both parts are Inf, as long as neither
     // part is NaN.
     std::cout << "DEBUG1 " << cflt.real() << " " << cdbl.real() << endl;
-    cflt = std::complex<float>(cflt.real(), fltInf);
-    cdbl = std::complex<double>(cdbl.real(), dblInf);
+    float abc = cflt.real();
+    double def = cdbl.real();
+    cflt = std::complex<float>(abc, fltInf);
+    cdbl = std::complex<double>(def, dblInf);
     cjflt = conjugate<float>(cjflt.real(), fltInf);
     cjdbl = conjugate<double>(cjdbl.real(), dblInf);
 
     // Imaginary only is Inf.
-    
+    std::cout << "DEBUG0 " << cflt.real() << " " << cdbl.real() << endl;
     std::cout << "DEBUG " << cflt << " " << cdbl << std::endl;
     SimTK_TEST(isInf(cflt) && isInf(cdbl));
     SimTK_TEST(isInf(cjflt) && isInf(cjdbl));
