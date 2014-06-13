@@ -14,4 +14,4 @@ install:
   # Build.
   - make -j8
 script:
-  - ctest -R '(BNTTest|TestScalar)'
+  - ctest -R '(BNTTest|TestScalar)' -V
