@@ -155,7 +155,7 @@ void testIsInf() {
 
     // Should be Inf if either or both parts are Inf, as long as neither
     // part is NaN.
-    std::cout << "DEBUG1 " << cflt.real() " " << cdbl.real() << endl;
+    std::cout << "DEBUG1 " << cflt.real() << " " << cdbl.real() << endl;
     cflt = std::complex<float>(cflt.real(), fltInf);
     cdbl = std::complex<double>(cdbl.real(), dblInf);
     cjflt = conjugate<float>(cjflt.real(), fltInf);
