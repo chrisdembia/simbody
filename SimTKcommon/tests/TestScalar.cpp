@@ -161,6 +161,7 @@ void testIsInf() {
     cjdbl = conjugate<double>(cjdbl.real(), dblInf);
 
     // Imaginary only is Inf.
+    std::cout << "DEBUG0 " << cflt.real() " " << cdbl.real() << endl;
     std::cout << "DEBUG " << cflt << " " << cdbl << std::endl;
     SimTK_TEST(isInf(cflt) && isInf(cdbl));
     SimTK_TEST(isInf(cjflt) && isInf(cjdbl));
