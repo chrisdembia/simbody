@@ -5,7 +5,7 @@ compiler:
   - clang
 install:
   - sudo apt-get update
-  - sudo apt-get install liblapack-dev liblas-dev
+  - sudo apt-get install liblapack-dev libblas-dev
   # Check which compiler and compiler version we're using.
   - echo "CXX="$CXX
   - echo "CC="$CC
