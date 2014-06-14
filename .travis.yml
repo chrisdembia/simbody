@@ -23,7 +23,7 @@ install:
   - echo "CXX="$CXX
   - echo "CC="$CC
   # Configure and generate Makefiles.
-  - cmake . -DBUILD_EXAMPLES=ON -DBUILD_VISUALIZER=OFF -DCMAKE_CXX_FLAGS="-Werror -std=c++11 -stdlib=libc++"
+  - cmake . -DBUILD_EXAMPLES=ON -DBUILD_VISUALIZER=OFF -DCMAKE_CXX_FLAGS=-Werror -DCMAKE_VERBOSE_MAKEFILE -DSIMBODY_STANDARD_11=$ELEVEN
   # Build.
   - make -j8
 script:
