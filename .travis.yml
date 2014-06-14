@@ -8,7 +8,6 @@ before_install:
   - tar xJf clang+llvm-3.4.1-x86_64-unknown-ubuntu12.04.tar.xz
   - export PATH=$PWD/clang+llvm-3.4.1-x86_64-unknown-ubuntu12.04/bin:$PATH
 install:
-  - export MYPWD=$pwd
   - svn co http://llvm.org/svn/llvm-project/libcxx/trunk libcxx
   - cd libcxx/lib && bash buildit
   - sudo cp ./libc++.so.1.0 /usr/lib/
@@ -16,7 +15,7 @@ install:
   - cd .. && sudo cp -r include/* /usr/include/c++/v1/
   - cd /usr/lib && sudo ln -sf libc++.so.1.0 libc++.so
   - sudo ln -sf libc++.so.1.0 libc++.so.1
-  - cd $MYPWD
+  - cd /home/travis/build/chrisdembia/simbody/
   #- if [ "$CXX" == "clang++" ]; then export CXX="clang++-3.4"; fi
   - sudo apt-get update
   - sudo apt-get install liblapack-dev
