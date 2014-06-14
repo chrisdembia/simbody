@@ -9,8 +9,8 @@ install:
   # Check which compiler and compiler version we're using.
   - echo "CXX="$CXX
   - echo "CC="$CC
-  - readlink -f /home/travis/build/chrisdembia/simbody/clang++
-  - ls /home/travis/build/chrisdembia/simbody/clang++
+  - whereis clang++
+  - ldd /home/travis/build/chrisdembia/simbody/clang++
   # Configure and generate Makefiles.
   - cmake . -DBUILD_EXAMPLES=ON -DBUILD_VISUALIZER=OFF -DSIMBODY_STANDARD_11=$ELEVEN -DCMAKE_CXX_FLAGS=-Werror
   # Build.
