@@ -10,7 +10,7 @@ install:
   - echo "CXX="$CXX
   - echo "CC="$CC
   - whereis clang++
-  - ldd /home/travis/build/chrisdembia/simbody/clang++
+  - ldd /usr/local/bin/clang++
   # Configure and generate Makefiles.
   - cmake . -DBUILD_EXAMPLES=ON -DBUILD_VISUALIZER=OFF -DSIMBODY_STANDARD_11=$ELEVEN -DCMAKE_CXX_FLAGS=-Werror
   # Build.
