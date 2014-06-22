@@ -24,15 +24,10 @@ before_install:
   # Travis Ubuntu 12.04 machines have an older version of gcc. Even if building
   # with Clang, we need the newer libstdc++ that we get by updating to gcc-4.8.
   # See https://github.com/travis-ci/travis-ci/issues/979.
-  - if [ "$CPP11" = "ON" ]; then sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y; fi
-  - if [ "$CPP11" = "ON" ]; then sudo apt-get update -qq; fi
-  - if [ "$CPP11" = "ON" ]; then sudo apt-get install -qq g++-4.8; fi
+  - if [[ "$CPP11" = "ON"  && "$CXX" = "g++" ]]; then sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y; fi
+  - if [[ "$CPP11" = "ON"  && "$CXX" = "g++" ]]; then sudo apt-get update -qq; fi
+  - if [[ "$CPP11" = "ON"  && "$CXX" = "g++" ]]; then sudo apt-get install -qq g++-4.8; fi
   - if [[ "$CPP11" = "ON" && "$CXX" = "g++" ]]; then export CXX="g++-4.8" CC="gcc-4.8"; fi
-  
-  # Install Clang 3.4.1.
-  - if [ "$CXX" = "clang++" ]; then wget http://llvm.org/releases/3.4.1/clang+llvm-3.4.1-x86_64-unknown-ubuntu12.04.tar.xz; fi
-  - if [ "$CXX" = "clang++" ]; then tar xJf clang+llvm-3.4.1-x86_64-unknown-ubuntu12.04.tar.xz; fi
-  - if [ "$CXX" = "clang++" ]; then export PATH=$PWD/clang+llvm-3.4.1-x86_64-unknown-ubuntu12.04/bin:$PATH; fi
 
 install:
   - cmake . -DBUILD_VISUALIZER=OFF -DSIMBODY_STANDARD_11=$CPP11 -DCMAKE_BUILD_TYPE=$BTYPE -DCMAKE_CXX_FLAGS=-Werror
