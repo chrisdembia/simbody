@@ -106,31 +106,6 @@ public:
                 m_simbiconStateIndex);
     }
 
-    // TODO
-	int getState() const {
-		return SIMBICON::_state; 
-	}
-    // TODO
-    void setState( int state, double time, bool LC, bool RC ) {
-		_state = state; 
-		_stateStartTime = time;
-		if (state == 0 || state == 2) {
-			// reset the swing thigh orientation when the swing leg changes
-			for (int i = 0; i < 2; i++) {
-				_lastSWTAngle[i] = -100.0;  
-				_curSWTAngle[i] = -100.0;  
-			}
-        }
-
-        std::cout << "t = " << time << " _state: " <<
-            getState() << " LC: " << LC << " RC: " << RC << std::endl;
-	}
-
-	double getStateStartTime() const {
-		return _stateStartTime; 
-	}
-
-
     /// The control consists of a few components. This method calls other
     /// methods that take care of these individual components. TODO
     void calcForce(const SimTK::State&                state,
@@ -160,6 +135,7 @@ private:
             getSIMBICONState(s) << " LC: " << LC << " RC: " << RC << std::endl;
 
         // TODO
+        /*
 		if (simbiconState == STATE0 || simbiconState == STATE2) {
 			// reset the swing thigh orientation when the swing leg changes
 			for (int i = 0; i < 2; i++) {
@@ -167,6 +143,7 @@ private:
 				const_cast<SIMBICON*>(this)->_curSWTAngle[i] = -100.0;
 			}
         }
+        */
     }
 
     Biped& m_biped;
@@ -183,11 +160,6 @@ private:
 
     // We set the value of the SIMBICON state using this index.
     CacheEntryIndex m_simbiconStateCacheIndex;
-
-    // TODO
-	int    _state;
-	double _stateStartTime; 
-
 
     void computeControls(const SimTK::State& s, SimTK::Vector& controls) const;
 
@@ -299,8 +271,6 @@ double clamp( double x, double maxTorque ) {
 
 SIMBICON::SIMBICON(Biped& biped) : m_biped(biped),
     m_forces(m_biped.getForceSubsystem()) {
-	_state = -1;
-	_stateStartTime = -1.0;
 	for (int i = 0; i < 2; i++) {
 		_lastSWTAngle[i] = -100.0;
 		_curSWTAngle[i] = -100.0;
@@ -321,7 +291,7 @@ void SIMBICON::calcForce(const State&         s,
                          Vector_<Vec3>&       /*particleForces*/,
                          Vector&              mobilityForces) const
 {
-    // TODO updateSIMBICONState(s);
+    updateSIMBICONState(s);
     Vector controls(NumActuators);
     computeControls(s,controls);
 
@@ -763,132 +733,14 @@ void SimbiconStateHandler::handleEvent(State& s, Real accuracy, bool& shouldTerm
     shouldTerminate = false;
 	SIMBICON* simctrl = &_simctrl;
 
-    _model.realize(s, Stage::Dynamics);
+// TODO    _model.realize(s, Stage::Dynamics);
 
     Real lForce, rForce;
     _model.findContactForces(s, lForce, rForce);
-    const bool lContact = (lForce > 0);
-    const bool rContact = (rForce > 0);
 
 
 #ifndef DROP_LANDING
-    /*
-	int curState = simctrl->getState();
-	double duration = s.getTime() - simctrl->getStateStartTime();  
-
-	if (curState < 0) {
-		if (rContact) 
-			simctrl->setState(2, s.getTime(), lContact, rContact); 
-		else if (lContact)
-			simctrl->setState(0, s.getTime(), lContact, rContact); 
-	}
-	else if (curState == 0) {
-        if (duration > 0.3) {
-			simctrl->setState(1, s.getTime(), lContact, rContact); 
-//        	std::cout << "Trans 0 -> 1" << std::endl;;
-		}
-		else if (rContact && duration > 0.1) { 
-			simctrl->setState(2, s.getTime(), lContact, rContact); 
-  //      	std::cout << "Trans 0 -> 2" << std::endl;;
-		}
-	}
-	else if (curState == 1) {
-        if (rContact && duration > 0.1) {
-			simctrl->setState(2, s.getTime(), lContact, rContact); 
-    //    	std::cout << "Trans 1 -> 2" << std::endl;;
-		}
-	}
-	else if (curState == 2) {
-        if (duration > 0.3) {
-			simctrl->setState(3, s.getTime(), lContact, rContact); 
-      //  	std::cout << "Trans 2 -> 3" << std::endl;;
-		}
-		else if (lContact && duration > 0.1) {
-			simctrl->setState(0, s.getTime(), lContact, rContact);
-       // 	std::cout << "Trans 2 -> 0" << std::endl;;
-		}
-	}
-	else if (curState == 3) {
-		if (lContact && duration > 0.1) {
-			simctrl->setState(0, s.getTime(), lContact, rContact);
-       // 	std::cout << "Trans 3 -> 0" << std::endl;;
-		}
-	}
-    */
-	const SIMBICON::SIMBICONState simbiconState = simctrl->getSIMBICONState(s);
-	const Real duration = s.getTime() - simctrl->getSIMBICONStateStartTime(s);
-
-    // simbiconState stateIdx
-    // ------------- --------
-    // 0             0
-    // 1             1
-    // 2             0
-    // 3             1
-    const int stateIdx = simbiconState % 2;
-
-    switch (simbiconState)
-    {
-        // Neither foot has contacted the ground yet.
-        case SIMBICON::UNKNOWN:
-
-            // Entering right stance.
-            if (rContact) {
-                simctrl->setSIMBICONState(s, SIMBICON::STATE2, lContact, rContact);
-            }
-            // Entering left stance.
-            else if (lContact) {
-                simctrl->setSIMBICONState(s, SIMBICON::STATE0, lContact, rContact);
-            }
-            break;
-
-        // Left stance.
-        case SIMBICON::STATE0:
-
-            // Stay in this state for \delta t seconds. TODO
-            if (duration > 0.3) {
-                simctrl->setSIMBICONState(s, SIMBICON::STATE1, lContact, rContact);
-            }
-            // Already entered right stance; skip STATE1.
-            else if (rContact && duration > 0.1) { // TODO min duration.
-                simctrl->setSIMBICONState(s, SIMBICON::STATE2, lContact, rContact);
-            }
-            break;
-
-        // Right foot strike.
-        case SIMBICON::STATE1:
-
-            // Stay in this state until the right foot makes contact.
-            if (rContact && duration > 0.1) { // TODO min duration.
-                simctrl->setSIMBICONState(s, SIMBICON::STATE2, lContact, rContact);
-            }
-            break;
-
-        // Right stance.
-        case SIMBICON::STATE2:
-
-            // Stay in this state for \delta t seconds. TODO
-            if (duration > 0.3) {
-                simctrl->setSIMBICONState(s, SIMBICON::STATE3, lContact, rContact);
-            }
-            // Already entered right stance; skip STATE3.
-            else if (lContact && duration > 0.1) {
-                simctrl->setSIMBICONState(s, SIMBICON::STATE0, lContact, rContact);
-            }
-            break;
-
-        // Left foot strike.
-        case SIMBICON::STATE3:
-
-            // Stay in this state until the left foot makes contact.
-            if (lContact && duration > 0.1) {
-                simctrl->setSIMBICONState(s, SIMBICON::STATE0, lContact, rContact);
-            }
-            break;
-    }
-
-
     simctrl->computeSecondaryStateVals(s, lForce, rForce);
-
 #endif
 }
 
@@ -945,7 +797,7 @@ public:
         }
         */
         std::ostringstream oss;
-        oss << "_state: " << m_simctrl->getState() << ", SIMBICONState: " <<
+        oss << "SIMBICONState: " <<
             m_simctrl->getSIMBICONState(state) << std::endl;
         energy.setText(oss.str());
         geometry.push_back(energy);
@@ -1016,19 +868,23 @@ int main(int argc, char **argv)
     State s;
     biped.initialize(s);
 
+    /* TODO
     printf("Act: u\n");
     for (int i=0; i < NumActuators; ++i) {
         printf("%2d: %d\n", i, int(biped.getUIndex(Biped::Coordinate(i))));
     }
+    */
 
     //biped.toes_r.lockAt(s, .2); biped.toes_l.lockAt(s, .2);
     //biped.foot_r.lockAt(s, Vec2(.2,0)); biped.foot_l.lockAt(s, Vec2(.2,0));
     biped.realize(s, Stage::Instance);
 
+    /* TODO
     printf("SIMBICON 3D:\n");
     printf("%d bodies, %d mobilities, -%d constraint equations -%d motions\n",
         biped.getMatterSubsystem().getNumBodies(), s.getNU(), s.getNMultipliers(),
         biped.getMatterSubsystem().getKnownUDotIndex(s).size());
+        */
 
     biped.getBody(Biped::trunk).setQToFitTranslation(s, Vec3(0,1.5,0));
     biped.getBody(Biped::trunk).setUToFitLinearVelocity(s, Vec3(1,0,0));
@@ -1066,76 +922,7 @@ int main(int argc, char **argv)
     const double startCPU  = cpuTime(), startTime = realTime();
 
     try {
-
-#ifdef RIGID_CONTACT
-    int timeStep = 0;
-    do {
-        if (timeStep % 10 == 0) {
-            viz.report(ts.getState());
-        }
-        ts.stepTo(ts.getState().getTime() + STATE_UPD_STEPSIZE);
-
-        State& s = const_cast<State&>(ts.getState());
-
-        biped.realize(s, Stage::Dynamics);
-
-        bool lContact, rContact;
-        biped.findContactStatus(s, lContact, rContact);
-
-
-    #ifndef DROP_LANDING
-        int curState = simctrl->getState();
-        double duration = s.getTime() - simctrl->getStateStartTime();
-
-        if (curState < 0) {
-            if (rContact)
-                simctrl->setState(2, s.getTime());
-            else if (lContact)
-                simctrl->setState(0, s.getTime());
-        }
-        else if (curState == 0) {
-            if (duration > 0.3) {
-                simctrl->setState(1, s.getTime());
-    //        	std::cout << "Trans 0 -> 1" << std::endl;;
-            }
-            else if (rContact && duration > 0.1) {
-                simctrl->setState(2, s.getTime());
-      //      	std::cout << "Trans 0 -> 2" << std::endl;;
-            }
-        }
-        else if (curState == 1) {
-            if (rContact && duration > 0.1) {
-                simctrl->setState(2, s.getTime());
-        //    	std::cout << "Trans 1 -> 2" << std::endl;;
-            }
-        }
-        else if (curState == 2) {
-            if (duration > 0.3) {
-                simctrl->setState(3, s.getTime());
-          //  	std::cout << "Trans 2 -> 3" << std::endl;;
-            }
-            else if (lContact && duration > 0.1) {
-                simctrl->setState(0, s.getTime());
-           // 	std::cout << "Trans 2 -> 0" << std::endl;;
-            }
-        }
-        else if (curState == 3) {
-            if (lContact && duration > 0.1) {
-                simctrl->setState(0, s.getTime());
-           // 	std::cout << "Trans 3 -> 0" << std::endl;;
-            }
-        }
-
-        simctrl->computeSecondaryStateVals(s, 0, 0);
-
-#endif
-
-
-        timeStep += 1;
-    } while (ts.getTime() < 10);
-#else
         ts.stepTo(Infinity); // RUN
-#endif
 
     } catch (const std::exception& e) {
         std::cout << "ERROR: " << e.what() << std::endl;
