@@ -45,10 +45,6 @@ const int NumActuators = 30;
 #define STATE_UPD_STEPSIZE 0.0005
 //#define RIGID_CONTACT
 
-
-// TODO
-class SimbiconStateHandler;
-
 class SIMBICON : public SimTK::Force::Custom::Implementation
 {
 public:
@@ -160,13 +156,15 @@ private:
             getSIMBICONState(s) << " LC: " << LC << " RC: " << RC << std::endl;
 
         // TODO
-		if (simbiconState == STATE0 || simbiconState == STATE2) {
+        /*
+		if (_state == 0 || _state == 2) {
 			// reset the swing thigh orientation when the swing leg changes
 			for (int i = 0; i < 2; i++) {
 				const_cast<SIMBICON*>(this)->_lastSWTAngle[i] = -100.0;
 				const_cast<SIMBICON*>(this)->_curSWTAngle[i] = -100.0;
 			}
         }
+        */
     }
 
     Biped& m_biped;
@@ -217,8 +215,6 @@ private:
     double _curRFootContactForce;
     double _curLFootContactForce;
 #endif
-
-    friend SimbiconStateHandler;
 
 };
 
@@ -321,7 +317,7 @@ void SIMBICON::calcForce(const State&         s,
                          Vector_<Vec3>&       /*particleForces*/,
                          Vector&              mobilityForces) const
 {
-    // TODO updateSIMBICONState(s);
+    updateSIMBICONState(s);
     Vector controls(NumActuators);
     computeControls(s,controls);
 
@@ -367,7 +363,7 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
 	int sth = Biped::hip_l_flexion;             // stance hip
     MobilizedBody ankle = m_biped.getBody(Biped::foot_l); // stance ankle
 
-    if (simbiconState == STATE2 || simbiconState == STATE3) { // right stance
+    if (_state == 2 || _state == 3) { // right stance
 		swh = Biped::hip_l_flexion;
 		sth = Biped::hip_r_flexion;
         ankle = m_biped.getBody(Biped::foot_r);
@@ -392,7 +388,7 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
 
 	double thetad = 0.5;
 #ifndef TWO_STATE
-    if (simbiconState == STATE1 || simbiconState == STATE3)
+    if (_state == 1 || _state == 3)
 		thetad = -0.1;
 	}
 #endif
@@ -432,7 +428,7 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
 
 	// sign change is needed for one of the stance legs in the coronal plane
 	double sign = 1;
-    if (simbiconState == STATE0 || simbiconState == STATE1) // left stance
+    if (_state == 0 || _state == 1) // left stance
 		sign = -1;
 
 	controls[swh] = clamp(  kp*(thetad + (cd*d_sag + cv*v_sag) - _curSWTAngle[0])
@@ -492,7 +488,7 @@ void SIMBICON::computeControls(const State& s, Vector& controls) const
 	int swh = Biped::hip_r_flexion;
 	int sth = Biped::hip_l_flexion;
 
-    if (simbiconState == STATE2 || simbiconState == STATE3) // right stance
+    if (_state == 2 || _state == 3) // right stance
     {
 		swh = Biped::hip_l_flexion;
 		sth = Biped::hip_r_flexion;
@@ -537,7 +533,7 @@ void SIMBICON::computeControls(const State& s, Vector& controls) const
             calcGainsFromStrength(ToeStrength, kp, kd);
 		}
 
-		if (simbiconState >= STATE0) {
+		if (_state >= 0) {
 			if (i == swk)
 				thetad = -1.1;
 			else if (i == swa)
@@ -546,7 +542,7 @@ void SIMBICON::computeControls(const State& s, Vector& controls) const
 				thetad = -0.05;
 
             #ifndef TWO_STATE
-            if (simbiconState == STATE1 || simbiconState == STATE3) {
+            if (_state == 1 || _state == 3) {
 				if (i == swk)
 					thetad = -0.05;
 				else if (i == swa)
@@ -562,7 +558,7 @@ void SIMBICON::computeControls(const State& s, Vector& controls) const
 		controls[i] = clamp(kp*(thetad - qi) - kd*ui, kp);
 	}
 
-	if (simbiconState >= STATE0) {
+	if (_state >= 0) {
 		fillInHipJointControls(s, controls);
     }
 
@@ -588,9 +584,9 @@ computeSecondaryStateVals(const State& s, Real lForce, Real rForce) {
 #endif
 
 	Vec3 upThigh;
-    if (simbiconState == STATE0 || simbiconState == STATE1)
+    if (_state == 0 || _state == 1)
 		getUpVectorInGround(s, m_biped.getBody(Biped::thigh_r), upThigh);
-    else if (simbiconState == STATE2 || simbiconState == STATE3)
+    else if (_state == 2 || _state == 3)
 		getUpVectorInGround(s, m_biped.getBody(Biped::thigh_l), upThigh);
 
 	Vec3 upPelvis;
@@ -772,7 +768,6 @@ void SimbiconStateHandler::handleEvent(State& s, Real accuracy, bool& shouldTerm
 
 
 #ifndef DROP_LANDING
-    /*
 	int curState = simctrl->getState();
 	double duration = s.getTime() - simctrl->getStateStartTime();  
 
@@ -814,78 +809,6 @@ void SimbiconStateHandler::handleEvent(State& s, Real accuracy, bool& shouldTerm
        // 	std::cout << "Trans 3 -> 0" << std::endl;;
 		}
 	}
-    */
-	const SIMBICON::SIMBICONState simbiconState = simctrl->getSIMBICONState(s);
-	const Real duration = s.getTime() - simctrl->getSIMBICONStateStartTime(s);
-
-    // simbiconState stateIdx
-    // ------------- --------
-    // 0             0
-    // 1             1
-    // 2             0
-    // 3             1
-    const int stateIdx = simbiconState % 2;
-
-    switch (simbiconState)
-    {
-        // Neither foot has contacted the ground yet.
-        case SIMBICON::UNKNOWN:
-
-            // Entering right stance.
-            if (rContact) {
-                simctrl->setSIMBICONState(s, SIMBICON::STATE2, lContact, rContact);
-            }
-            // Entering left stance.
-            else if (lContact) {
-                simctrl->setSIMBICONState(s, SIMBICON::STATE0, lContact, rContact);
-            }
-            break;
-
-        // Left stance.
-        case SIMBICON::STATE0:
-
-            // Stay in this state for \delta t seconds. TODO
-            if (duration > 0.3) {
-                simctrl->setSIMBICONState(s, SIMBICON::STATE1, lContact, rContact);
-            }
-            // Already entered right stance; skip STATE1.
-            else if (rContact && duration > 0.1) { // TODO min duration.
-                simctrl->setSIMBICONState(s, SIMBICON::STATE2, lContact, rContact);
-            }
-            break;
-
-        // Right foot strike.
-        case SIMBICON::STATE1:
-
-            // Stay in this state until the right foot makes contact.
-            if (rContact && duration > 0.1) { // TODO min duration.
-                simctrl->setSIMBICONState(s, SIMBICON::STATE2, lContact, rContact);
-            }
-            break;
-
-        // Right stance.
-        case SIMBICON::STATE2:
-
-            // Stay in this state for \delta t seconds. TODO
-            if (duration > 0.3) {
-                simctrl->setSIMBICONState(s, SIMBICON::STATE3, lContact, rContact);
-            }
-            // Already entered right stance; skip STATE3.
-            else if (lContact && duration > 0.1) {
-                simctrl->setSIMBICONState(s, SIMBICON::STATE0, lContact, rContact);
-            }
-            break;
-
-        // Left foot strike.
-        case SIMBICON::STATE3:
-
-            // Stay in this state until the left foot makes contact.
-            if (lContact && duration > 0.1) {
-                simctrl->setSIMBICONState(s, SIMBICON::STATE0, lContact, rContact);
-            }
-            break;
-    }
-
 
     simctrl->computeSecondaryStateVals(s, lForce, rForce);
 
