@@ -35,7 +35,7 @@ using namespace SimTK;
 
 // TODO remove
 const Real RealTimeFactor
-    = 1; // try to run in real time
+    = 0.1; // try to run in real time
 
 // TODO remove
 const int NumActuators = 30;
@@ -44,6 +44,10 @@ const int NumActuators = 30;
 
 #define STATE_UPD_STEPSIZE 0.0005
 //#define RIGID_CONTACT
+
+
+// TODO
+class SimbiconStateHandler;
 
 class SIMBICON : public SimTK::Force::Custom::Implementation
 {
@@ -102,6 +106,31 @@ public:
                 m_simbiconStateIndex);
     }
 
+    // TODO
+	int getState() const {
+		return _state; 
+	}
+    // TODO
+    void setState( int state, double time, bool LC, bool RC ) {
+		_state = state; 
+		_stateStartTime = time;
+		if (state == 0 || state == 2) {
+			// reset the swing thigh orientation when the swing leg changes
+			for (int i = 0; i < 2; i++) {
+				_lastSWTAngle[i] = -100.0;  
+				_curSWTAngle[i] = -100.0;  
+			}
+        }
+
+        std::cout << "t = " << time << " _state: " <<
+            getState() << " LC: " << LC << " RC: " << RC << std::endl;
+	}
+
+	double getStateStartTime() const {
+		return _stateStartTime; 
+	}
+
+
     /// The control consists of a few components. This method calls other
     /// methods that take care of these individual components. TODO
     void calcForce(const SimTK::State&                state,
@@ -121,11 +150,14 @@ private:
     /// Determine if the SIMBICON state of the state machine has changed.
     void updateSIMBICONState(const State& s) const;
 
-    void setSIMBICONState(const State& s, SIMBICONState simbiconState) const
+    void setSIMBICONState(const State& s, SIMBICONState simbiconState, bool LC, bool RC) const
     {
         m_forces.updDiscreteVarUpdateValue(s, m_simbiconStateIndex) =
             Value<SIMBICONState>(simbiconState);
         m_forces.markDiscreteVarUpdateValueRealized(s, m_simbiconStateIndex);
+
+        std::cout << "t: " << s.getTime() << " SIMBICONState: " <<
+            getSIMBICONState(s) << " LC: " << LC << " RC: " << RC << std::endl;
 
         // TODO
 		if (simbiconState == STATE0 || simbiconState == STATE2) {
@@ -151,6 +183,10 @@ private:
 
     // We set the value of the SIMBICON state using this index.
     CacheEntryIndex m_simbiconStateCacheIndex;
+
+    // TODO
+	int    _state;
+	double _stateStartTime; 
 
 
     void computeControls(const SimTK::State& s, SimTK::Vector& controls) const;
@@ -182,6 +218,18 @@ private:
     double _curLFootContactForce;
 #endif
 
+    friend SimbiconStateHandler;
+
+};
+
+class SimbiconStateHandler : public SimTK::PeriodicEventHandler {
+public:
+    SimbiconStateHandler(Biped& m, SIMBICON& simctrl, SimTK::Real interval);
+
+    void handleEvent(SimTK::State& s, SimTK::Real accuracy, bool& shouldTerminate) const;
+private:
+    Biped& _model;
+    SIMBICON& _simctrl;
 };
 
 // Normally SIMBICON has 4 states per gait cycle (i.e. 2 per leg), 2 state is
@@ -251,6 +299,8 @@ double clamp( double x, double maxTorque ) {
 
 SIMBICON::SIMBICON(Biped& biped) : m_biped(biped),
     m_forces(m_biped.getForceSubsystem()) {
+	_state = -1;
+	_stateStartTime = -1.0;
 	for (int i = 0; i < 2; i++) {
 		_lastSWTAngle[i] = -100.0;
 		_curSWTAngle[i] = -100.0;
@@ -271,7 +321,7 @@ void SIMBICON::calcForce(const State&         s,
                          Vector_<Vec3>&       /*particleForces*/,
                          Vector&              mobilityForces) const
 {
-    updateSIMBICONState(s);
+    // TODO updateSIMBICONState(s);
     Vector controls(NumActuators);
     computeControls(s,controls);
 
@@ -496,7 +546,7 @@ void SIMBICON::computeControls(const State& s, Vector& controls) const
 				thetad = -0.05;
 
             #ifndef TWO_STATE
-            if (simbiconState == STATE1 || simbiconState ==  STATE3) {
+            if (simbiconState == STATE1 || simbiconState == STATE3) {
 				if (i == swk)
 					thetad = -0.05;
 				else if (i == swa)
@@ -619,9 +669,6 @@ computeSecondaryStateVals(const State& s, Real lForce, Real rForce) {
 
 void SIMBICON::updateSIMBICONState(const State& s) const
 {
-    // TODO remove this line?
-    //m_biped.realize(s, Stage::Dynamics);
-
     Real lForce, rForce;
     m_biped.findContactForces(s, lForce, rForce);
     const bool lContact = (lForce > 0);
@@ -645,13 +692,13 @@ void SIMBICON::updateSIMBICONState(const State& s) const
         // Neither foot has contacted the ground yet.
         case UNKNOWN:
 
-            // Entering left stance.
-            if (rContact) {
-                setSIMBICONState(s, STATE0);
-            }
             // Entering right stance.
+            if (rContact) {
+                setSIMBICONState(s, STATE2, lContact, rContact);
+            }
+            // Entering left stance.
             else if (lContact) {
-                setSIMBICONState(s, STATE2);
+                setSIMBICONState(s, STATE0, lContact, rContact);
             }
             break;
 
@@ -660,11 +707,11 @@ void SIMBICON::updateSIMBICONState(const State& s) const
 
             // Stay in this state for \delta t seconds. TODO
             if (duration > 0.3) {
-                setSIMBICONState(s, STATE1);
+                setSIMBICONState(s, STATE1, lContact, rContact);
             }
             // Already entered right stance; skip STATE1.
             else if (rContact && duration > 0.1) { // TODO min duration.
-                setSIMBICONState(s, STATE2);
+                setSIMBICONState(s, STATE2, lContact, rContact);
             }
             break;
 
@@ -673,7 +720,7 @@ void SIMBICON::updateSIMBICONState(const State& s) const
 
             // Stay in this state until the right foot makes contact.
             if (rContact && duration > 0.1) { // TODO min duration.
-                setSIMBICONState(s, STATE2);
+                setSIMBICONState(s, STATE2, lContact, rContact);
             }
             break;
 
@@ -682,11 +729,11 @@ void SIMBICON::updateSIMBICONState(const State& s) const
 
             // Stay in this state for \delta t seconds. TODO
             if (duration > 0.3) {
-                setSIMBICONState(s, STATE3);
+                setSIMBICONState(s, STATE3, lContact, rContact);
             }
             // Already entered right stance; skip STATE3.
             else if (lContact && duration > 0.1) {
-                setSIMBICONState(s, STATE0);
+                setSIMBICONState(s, STATE0, lContact, rContact);
             }
             break;
 
@@ -695,16 +742,156 @@ void SIMBICON::updateSIMBICONState(const State& s) const
 
             // Stay in this state until the left foot makes contact.
             if (lContact && duration > 0.1) {
-                setSIMBICONState(s, STATE0);
+                setSIMBICONState(s, STATE0, lContact, rContact);
             }
             break;
     }
 
     // TODO const cast.
-    const_cast<SIMBICON*>(this)->computeSecondaryStateVals(s, lForce, rForce);
+    // TODO const_cast<SIMBICON*>(this)->computeSecondaryStateVals(s, lForce, rForce);
 
 #endif
 }
+
+SimbiconStateHandler::SimbiconStateHandler(Biped& model, SIMBICON& simctrl,
+    Real interval) 
+        : PeriodicEventHandler(interval), _model(model), _simctrl(simctrl) {
+	}
+
+void SimbiconStateHandler::handleEvent(State& s, Real accuracy, bool& shouldTerminate) const
+{
+    shouldTerminate = false;
+	SIMBICON* simctrl = &_simctrl;
+
+    _model.realize(s, Stage::Dynamics);
+
+    Real lForce, rForce;
+    _model.findContactForces(s, lForce, rForce);
+    const bool lContact = (lForce > 0);
+    const bool rContact = (rForce > 0);
+
+
+#ifndef DROP_LANDING
+    /*
+	int curState = simctrl->getState();
+	double duration = s.getTime() - simctrl->getStateStartTime();  
+
+	if (curState < 0) {
+		if (rContact) 
+			simctrl->setState(2, s.getTime(), lContact, rContact); 
+		else if (lContact)
+			simctrl->setState(0, s.getTime(), lContact, rContact); 
+	}
+	else if (curState == 0) {
+        if (duration > 0.3) {
+			simctrl->setState(1, s.getTime(), lContact, rContact); 
+//        	std::cout << "Trans 0 -> 1" << std::endl;;
+		}
+		else if (rContact && duration > 0.1) { 
+			simctrl->setState(2, s.getTime(), lContact, rContact); 
+  //      	std::cout << "Trans 0 -> 2" << std::endl;;
+		}
+	}
+	else if (curState == 1) {
+        if (rContact && duration > 0.1) {
+			simctrl->setState(2, s.getTime(), lContact, rContact); 
+    //    	std::cout << "Trans 1 -> 2" << std::endl;;
+		}
+	}
+	else if (curState == 2) {
+        if (duration > 0.3) {
+			simctrl->setState(3, s.getTime(), lContact, rContact); 
+      //  	std::cout << "Trans 2 -> 3" << std::endl;;
+		}
+		else if (lContact && duration > 0.1) {
+			simctrl->setState(0, s.getTime(), lContact, rContact);
+       // 	std::cout << "Trans 2 -> 0" << std::endl;;
+		}
+	}
+	else if (curState == 3) {
+		if (lContact && duration > 0.1) {
+			simctrl->setState(0, s.getTime(), lContact, rContact);
+       // 	std::cout << "Trans 3 -> 0" << std::endl;;
+		}
+	}
+    */
+	const SIMBICON::SIMBICONState simbiconState = simctrl->getSIMBICONState(s);
+	const Real duration = s.getTime() - simctrl->getSIMBICONStateStartTime(s);
+
+    // simbiconState stateIdx
+    // ------------- --------
+    // 0             0
+    // 1             1
+    // 2             0
+    // 3             1
+    const int stateIdx = simbiconState % 2;
+
+    switch (simbiconState)
+    {
+        // Neither foot has contacted the ground yet.
+        case SIMBICON::UNKNOWN:
+
+            // Entering right stance.
+            if (rContact) {
+                simctrl->setSIMBICONState(s, SIMBICON::STATE2, lContact, rContact);
+            }
+            // Entering left stance.
+            else if (lContact) {
+                simctrl->setSIMBICONState(s, SIMBICON::STATE0, lContact, rContact);
+            }
+            break;
+
+        // Left stance.
+        case SIMBICON::STATE0:
+
+            // Stay in this state for \delta t seconds. TODO
+            if (duration > 0.3) {
+                simctrl->setSIMBICONState(s, SIMBICON::STATE1, lContact, rContact);
+            }
+            // Already entered right stance; skip STATE1.
+            else if (rContact && duration > 0.1) { // TODO min duration.
+                simctrl->setSIMBICONState(s, SIMBICON::STATE2, lContact, rContact);
+            }
+            break;
+
+        // Right foot strike.
+        case SIMBICON::STATE1:
+
+            // Stay in this state until the right foot makes contact.
+            if (rContact && duration > 0.1) { // TODO min duration.
+                simctrl->setSIMBICONState(s, SIMBICON::STATE2, lContact, rContact);
+            }
+            break;
+
+        // Right stance.
+        case SIMBICON::STATE2:
+
+            // Stay in this state for \delta t seconds. TODO
+            if (duration > 0.3) {
+                simctrl->setSIMBICONState(s, SIMBICON::STATE3, lContact, rContact);
+            }
+            // Already entered right stance; skip STATE3.
+            else if (lContact && duration > 0.1) {
+                simctrl->setSIMBICONState(s, SIMBICON::STATE0, lContact, rContact);
+            }
+            break;
+
+        // Left foot strike.
+        case SIMBICON::STATE3:
+
+            // Stay in this state until the left foot makes contact.
+            if (lContact && duration > 0.1) {
+                simctrl->setSIMBICONState(s, SIMBICON::STATE0, lContact, rContact);
+            }
+            break;
+    }
+
+
+    simctrl->computeSecondaryStateVals(s, lForce, rForce);
+
+#endif
+}
+
 
 
 
@@ -739,8 +926,8 @@ void dumpIntegratorStats(double startCPU, double startTime,
 
 class ShowContact : public DecorationGenerator {
 public:
-    ShowContact(const Biped& unis)
-    :   m_unis(unis) {}
+    ShowContact(const Biped& unis, const SIMBICON* simctrl)
+    :   m_unis(unis), m_simctrl(simctrl) {}
 
     void generateDecorations(const State&                state,
                              Array_<DecorativeGeometry>& geometry) OVERRIDE_11
@@ -748,15 +935,19 @@ public:
         DecorativeText energy;
         energy.setIsScreenText(true);
         bool left, right;
-        m_unis.findContactStatus(state, left, right);
+        // TODO m_unis.findContactStatus(state, left, right);
         std::string str = "";
-        if (left) {
+        /* TODO if (left) {
             str += "left on,";
         }
         if (right) {
             str += "right on";
         }
-        energy.setText(str);
+        */
+        std::ostringstream oss;
+        oss << "_state: " << m_simctrl->getState() << ", SIMBICONState: " <<
+            m_simctrl->getSIMBICONState(state) << std::endl;
+        energy.setText(oss.str());
         geometry.push_back(energy);
         /*
         for (int i=0; i < m_unis.getNumContactElements(); ++i) {
@@ -787,6 +978,7 @@ public:
     }
 private:
     const Biped& m_unis;
+    const SIMBICON* m_simctrl;
 };
 
 //==============================================================================
@@ -816,6 +1008,11 @@ int main(int argc, char **argv)
     SIMBICON* simctrl = new SIMBICON(biped);
     Force::Custom simbicon(biped.updForceSubsystem(), simctrl); // takes ownership
 
+#ifndef RIGID_CONTACT
+    biped.addEventHandler(new SimbiconStateHandler(biped,*simctrl,
+                                                          STATE_UPD_STEPSIZE));
+#endif
+
     State s;
     biped.initialize(s);
 
@@ -837,9 +1034,9 @@ int main(int argc, char **argv)
     biped.getBody(Biped::trunk).setUToFitLinearVelocity(s, Vec3(1,0,0));
     viz.report(s);
 
-#ifdef RIGID_CONTACT
-    viz.addDecorationGenerator(new ShowContact(biped));
-#endif
+// TODO #ifdef RIGID_CONTACT
+    viz.addDecorationGenerator(new ShowContact(biped, simctrl));
+// TODO #endif
 
 #ifndef RIGID_CONTACT
     // Simulate.
