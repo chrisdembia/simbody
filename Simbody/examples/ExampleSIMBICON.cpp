@@ -198,7 +198,7 @@ private:
     // TODO
     Real coordPDControl(const State& s,
             const Biped::Coordinate coord, const GainGroup gainGroup,
-            const Real thetad, Vector& mobForces) const
+            const Real thetad, Vector& mobilityForces) const
     {
         // Prepare quantities.
         Real kp = m_proportionalGains.at(gainGroup);
@@ -210,8 +210,8 @@ private:
         Real force = clamp(kp * (thetad - q) - kd * u, kp);
 
         // Update the proper entry in mobForces.
-        // TODO m_biped.addInForce(coord, force, mobForces);
-
+        m_biped.addInForce(coord, force, mobilityForces);
+        
         return force;
     }
 
@@ -241,7 +241,7 @@ private:
     // We set the value of the SIMBICON state using this index.
     CacheEntryIndex m_simbiconStateCacheIndex;
 
-    void computeControls(const SimTK::State& s, SimTK::Vector& mobForces) const;
+    void computeControls(const State& s, Vector& controls, Vector& mobForces) const;
 
 	void getSagCorNormals( const SimTK::State& s,
 		SimTK::Vec3& sagN, SimTK::Vec3& corN ) const;
@@ -250,7 +250,7 @@ private:
 	void getFrontVectorInGround( const SimTK::State& s, const SimTK::MobilizedBody& b,
 		SimTK::Vec3& up ) const;
 	void fillInHipJointControls( const SimTK::State& s,
-		SimTK::Vector& mobForces ) const;
+		SimTK::Vector& controls ) const;
 
 	double _lastSWTAngle[2];
 	double _curSWTAngle[2];
@@ -347,12 +347,11 @@ void SIMBICON::calcForce(const State&         s,
                          Vector&              mobilityForces) const
 {
     updateSIMBICONState(s);
-    computeControls(s, mobilityForces);
+    Vector controls(NumActuators);
+    computeControls(s,controls, mobilityForces);
 
-    /* TODO
     for (int i=0; i<NumActuators; ++i)
-        mobilityForces[m_biped.getUIndex(Biped::Coordinate(i))] = controls[i];
-        */
+        mobilityForces[m_biped.getUIndex(Biped::Coordinate(i))] += controls[i];
 }
 
 
@@ -380,7 +379,7 @@ void SIMBICON::getFrontVectorInGround( const State& s, const MobilizedBody& b,
 	front = Vec3(b.getBodyRotation(s).x());
 }
 
-void SIMBICON::fillInHipJointControls( const State& s, Vector& mobForces) const {
+void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const {
 	const SimbodyMatterSubsystem& matter = m_biped.getMatterSubsystem();
 	const SIMBICONState simbiconState = getSIMBICONState(s);
 	Vec3 sagN, corN;
@@ -389,8 +388,8 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& mobForces) const 
     // the pelvis, projected on the ground plane.
 	getSagCorNormals(s, sagN, corN);
 
-    Biped::Coordinate swh = Biped::hip_r_flexion;             // swing hip
-	Biped::Coordinate sth = Biped::hip_l_flexion;             // stance hip
+	int swh = Biped::hip_r_flexion;             // swing hip
+	int sth = Biped::hip_l_flexion;             // stance hip
     MobilizedBody ankle = m_biped.getBody(Biped::foot_l); // stance ankle
 
     if (simbiconState == STATE2 || simbiconState == STATE3) { // right stance
@@ -398,9 +397,9 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& mobForces) const 
 		sth = Biped::hip_r_flexion;
         ankle = m_biped.getBody(Biped::foot_r);
 	}
-    Biped::Coordinate swhc = Biped::Coordinate(swh - 1); // coronal plane (hip adduction)
-	Biped::Coordinate sthc = Biped::Coordinate(sth - 1); // stance hip adduction
-	Biped::Coordinate sta = Biped::Coordinate(sth + 4);  // stance ankle dorsiflexion
+	int swhc = swh - 1; // coronal plane (hip adduction)
+	int sthc = sth - 1; // stance hip adduction
+	int sta = sth + 4;  // stance ankle dorsiflexion
 
     const Transform& X_PF = ankle.getInboardFrame(s);
     Vec3 ankleLocInParent = X_PF.p();
@@ -457,27 +456,19 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& mobForces) const 
     if (simbiconState == STATE0 || simbiconState == STATE1) // left stance
 		sign = -1;
 
-	m_biped.addInForce(swh, clamp(  kp*(thetad + (cd*d_sag + cv*v_sag) - _curSWTAngle[0])
-                          - kd*SWTAngleVelEst[0], kp), mobForces);
-	m_biped.addInForce(swhc, sign*(clamp(  kp*(0.0 + (cd*d_cor + cv*v_cor) - _curSWTAngle[1])
-                                 - kd*SWTAngleVelEst[1], kp)), mobForces);
+	controls[swh] = clamp(  kp*(thetad + (cd*d_sag + cv*v_sag) - _curSWTAngle[0])
+                          - kd*SWTAngleVelEst[0], kp);
+	controls[swhc] = sign*(clamp(  kp*(0.0 + (cd*d_cor + cv*v_cor) - _curSWTAngle[1])
+                                 - kd*SWTAngleVelEst[1], kp));
 
 	// use stance hip to control the trunk
-    Real stanceHipForce = clamp(-kp*(0. - _curTrunkAngle[0]) + kd*trunkAngleVelEst[0] - m_biped.getForce(swh, mobForces), kp);
-    m_biped.addInForce(sth, stanceHipForce, mobForces);
-    /* TODO
 	controls[sth] =  -kp*(0. - _curTrunkAngle[0]) + kd*trunkAngleVelEst[0];
 	controls[sth] -= controls[swh];
 	controls[sth] = clamp(controls[sth], kp);
-    */
 
-    Real stanceHipAdductionForce = clamp(sign*(kp*(0. - _curTrunkAngle[1]) - kd*trunkAngleVelEst[1]) - m_biped.getForce(swhc, mobForces), kp);
-    m_biped.addInForce(sthc, stanceHipAdductionForce, mobForces);
-    /* TODO
 	controls[sthc] = sign*(kp*(0. - _curTrunkAngle[1]) - kd*trunkAngleVelEst[1]);
 	controls[sthc] -= controls[swhc];
 	controls[sthc] = clamp(controls[sthc], kp);
-    */
 
 #ifdef USE_GLOBAL_ANKLE
     double kpaflex, kdaflex, kpainv, kdainv; // gains for ankle flex, inversion
@@ -511,11 +502,11 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& mobForces) const 
 
 }
 
-void SIMBICON::computeControls(const State& s, Vector& mobForces) const
+void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForces) const
 {
 #ifdef DROP_LANDING
-	for (int i = 0; i < mobForces.size(); i++)
-			mobForces[i] = 0.0;
+	for (int i = 0; i < controls.size(); i++)
+			controls[i] = 0.0;
 	return;
 #else
 
@@ -701,13 +692,13 @@ void SIMBICON::computeControls(const State& s, Vector& mobForces) const
 
     */
 	if (simbiconState >= STATE0) {
-		fillInHipJointControls(s, mobForces);
+		fillInHipJointControls(s, controls);
     }
 
 	Vec3 com = m_biped.getMatterSubsystem().calcSystemMassCenterLocationInGround(s);
 	if (com[1] < 0.7) {
-		for (int i = 0; i < mobForces.size(); i++)
-			mobForces[i] = 0.0;
+		for (int i = 0; i < controls.size(); i++)
+			controls[i] = 0.0;
 	}
 	return;
 #endif
