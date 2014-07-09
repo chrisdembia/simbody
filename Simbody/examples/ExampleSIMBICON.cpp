@@ -33,6 +33,35 @@ using namespace SimTK;
 
 // #define RIGID_CONTACT
 
+// Normally SIMBICON has 4 states per gait cycle (i.e. 2 per leg), 2 state is
+// simplified and not as realistic.
+#define TWO_STATE
+// Torque angle to be flat relative to ground (not in original SIMBICON paper)
+//#define USE_GLOBAL_ANKLE
+// Aim hip towards a global orientation (prevents meandering) (Not implemented
+// for rigid contact because it depends on checking force above some maximum.)
+//#define USE_GLOBAL_HIPROT
+// Drop landing doesn't use controller so you can run with models other than
+// the humanoid upon which the controller depends.
+//#define DROP_LANDING
+
+namespace { // file-scope symbols
+
+const Vec3 UnitX(1.0, 0.0, 0.0);
+const Vec3 UnitY(0.0, 1.0, 0.0);
+const Vec3 UnitZ(0.0, 0.0, 1.0);
+
+double clamp( double x, double maxTorque ) {
+	if (x > maxTorque)
+		x = maxTorque;
+
+	if (x < -maxTorque)
+		x = -maxTorque;
+
+	return x;
+}
+}
+
 // TODO remove
 const Real RealTimeFactor
     = 1; // try to run in real time
@@ -162,6 +191,30 @@ private:
         */
     }
 
+    /// Apply generalized force to a specific coord using a
+    /// proportional-derivative control law that tracks thetad.
+    /// The force is added into the appropriate place in `mobForces.`
+    /// For convenience / inspection, the force is returned as well.
+    // TODO
+    Real coordPDControl(const State& s,
+            const Biped::Coordinate coord, const GainGroup gainGroup,
+            const Real thetad, Vector& mobForces) const
+    {
+        // Prepare quantities.
+        Real kp = m_proportionalGains.at(gainGroup);
+        Real kd = m_derivativeGains.at(gainGroup);
+        Real q = m_biped.getQ(s, coord);
+        Real u = m_biped.getU(s, coord);
+
+        // PD control law:
+        Real force = clamp(kp * (thetad - q) - kd * u, kp);
+
+        // Update the proper entry in mobForces.
+        // TODO m_biped.addInForce(coord, force, mobForces);
+
+        return force;
+    }
+
     // TODO
     void calcGainsFromStrength(GainGroup group, double& kp, double& kd) const {
         kp = m_proportionalGains.at(group);
@@ -230,37 +283,6 @@ private:
     Biped& _model;
     SIMBICON& _simctrl;
 };
-
-// Normally SIMBICON has 4 states per gait cycle (i.e. 2 per leg), 2 state is
-// simplified and not as realistic.
-#define TWO_STATE
-// Torque angle to be flat relative to ground (not in original SIMBICON paper)
-//#define USE_GLOBAL_ANKLE
-// Aim hip towards a global orientation (prevents meandering) (Not implemented
-// for rigid contact because it depends on checking force above some maximum.)
-//#define USE_GLOBAL_HIPROT
-// Drop landing doesn't use controller so you can run with models other than
-// the humanoid upon which the controller depends.
-//#define DROP_LANDING
-
-namespace { // file-scope symbols
-
-// Controller gains, given by "strength" in N-m/radian.
-
-const Vec3 UnitX(1.0, 0.0, 0.0);
-const Vec3 UnitY(0.0, 1.0, 0.0);
-const Vec3 UnitZ(0.0, 0.0, 1.0);
-
-double clamp( double x, double maxTorque ) {
-	if (x > maxTorque)
-		x = maxTorque;
-
-	if (x < -maxTorque)
-		x = -maxTorque;
-
-	return x;
-}
-}
 Real criticallyDampedDerivativeGain(Real proportionalGain) {
     return 2.0 * std::sqrt(proportionalGain);
 }
@@ -501,39 +523,38 @@ void SIMBICON::computeControls(const State& s, Vector& controls) const
 	int stk = sth + 2; // stance knee
 	int sta = sth + 4; // stance ankle
 	for (int i = 0; i < NumActuators; i++) {
-        double kp, kd;          // position gain, derivative gain
-        calcGainsFromStrength(generic, kp, kd);
+        GainGroup gainGroup = generic;
 		double thetad = 0.0;                    // desired angle
 
 		if (i == Biped::neck_extension || i == Biped::neck_bending || i == Biped::neck_rotation) {
-            calcGainsFromStrength(neck, kp, kd);
+            gainGroup = neck;
 		}
 		else if (i == Biped::back_tilt || i == Biped::back_list || i == Biped::back_rotation) {
-            calcGainsFromStrength(back, kp, kd);
+            gainGroup = back;
 		}
 		else if (   i == Biped::shoulder_r_flexion   || i == Biped::shoulder_l_flexion
                  || i == Biped::shoulder_r_adduction || i == Biped::shoulder_l_adduction
                  || i == Biped::elbow_r_flexion      || i == Biped::elbow_l_flexion) {
-            calcGainsFromStrength(arm_flexion_adduction, kp, kd);
+            gainGroup = arm_flexion_adduction;
 		}
 		else if (   i == Biped::shoulder_r_rotation || i == Biped::shoulder_l_rotation
                  || i == Biped::elbow_r_rotation    || i == Biped::elbow_l_rotation) {
-            calcGainsFromStrength(arm_rotation, kp, kd);
+            gainGroup = arm_rotation;
 		}
 		else if (i == Biped::hip_r_rotation || i == Biped::hip_l_rotation) {
-            calcGainsFromStrength(hip_rotation, kp, kd);
+            gainGroup = hip_rotation;
 		}
 		else if (i == Biped::knee_r_extension || i == Biped::knee_l_extension) {
-            calcGainsFromStrength(knee, kp, kd);
+            gainGroup = knee;
 		}
         else if (i == Biped::ankle_r_dorsiflexion || i == Biped::ankle_l_dorsiflexion) {
-            calcGainsFromStrength(ankle_flexion, kp, kd);
+            gainGroup = ankle_flexion;
         }
         else if (i == Biped::ankle_r_inversion || i == Biped::ankle_l_inversion) {
-            calcGainsFromStrength(ankle_inversion, kp, kd);
+            gainGroup = ankle_inversion;
         }
-		else if (i == Biped::mtp_r_dorsiflexion || i == Biped::mtp_l_dorsiflexion) { // toe
-            calcGainsFromStrength(toe, kp, kd);
+		else if (i == Biped::mtp_r_dorsiflexion || i == Biped::mtp_l_dorsiflexion) {
+            gainGroup = toe;
 		}
 
 		if (simbiconState >= STATE0) {
@@ -556,9 +577,15 @@ void SIMBICON::computeControls(const State& s, Vector& controls) const
             #endif
 		}
 
+        controls[i] = coordPDControl(s, Biped::Coordinate(i), gainGroup, thetad, controls); // TODO controls.
+        /* TODO
+        const double kp = m_proportionalGains.at(gainGroup);
+        const double kd = m_derivativeGains.at(gainGroup);
+
         const Real qi = s.getQ()[m_biped.getQIndex(Biped::Coordinate(i))];
         const Real ui = s.getU()[m_biped.getUIndex(Biped::Coordinate(i))];
 		controls[i] = clamp(kp*(thetad - qi) - kd*ui, kp);
+        */
 	}
 
 	if (simbiconState >= STATE0) {
