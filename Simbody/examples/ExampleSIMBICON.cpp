@@ -165,13 +165,15 @@ private:
     // TODO
     void calcGainsFromStrength(GainGroup group, double& kp, double& kd) const {
         kp = m_proportionalGains.at(group);
-        kd = m_proportionalGains.at(group);
+        kd = m_derivativeGains.at(group);
     }
 
     Biped& m_biped;
     const GeneralForceSubsystem& m_forces;
 
+    /// Proportional (position) gains (kp).
     std::map<GainGroup, Real> m_proportionalGains;
+    /// Derivative (speed) gains; mostly chosen for critical damping.
     std::map<GainGroup, Real> m_derivativeGains;
 
     // The SIMBICON controller itself has some state.
@@ -243,29 +245,11 @@ private:
 
 namespace { // file-scope symbols
 
-// Controller gains, given by "strength" in N-m/radian. Then kp=strength
-// and kd=2*sqrt(strength) for critical damping.
-const Real DefaultStrength              = 300;  // was 300,30
-const Real NeckStrength                 = 20;  // was 100,10
-const Real BackStrength                 = 200;  // was 300,30
-const Real HipFlexionAdductionStrength  = 500;  // was 1000,100
-const Real HipRotationStrength          = 100;  // was 300,30
-const Real KneeStrength                 = 300;  // was 300,30
-const Real ArmFlexionAdductionStrength  = 10;  // was 300,30
-const Real ArmRotationStrength          = 5;  // was 300,30
-const Real AnkleFlexionStrength         = 100;  // was 300,30
-const Real AnkleInversionStrength       = 50;   // was 300,30
-const Real ToeStrength                  = 25;   // was 30,3
+// Controller gains, given by "strength" in N-m/radian.
 
 const Vec3 UnitX(1.0, 0.0, 0.0);
 const Vec3 UnitY(0.0, 1.0, 0.0);
 const Vec3 UnitZ(0.0, 0.0, 1.0);
-
-// Convert muscle strength into critically damped control gains.
-void calcGainsFromStrength(const Real& strength, double& kp, double& kd) {
-    kp = strength;
-    kd = 2*std::sqrt(strength);
-}
 
 double clamp( double x, double maxTorque ) {
 	if (x > maxTorque)
@@ -284,28 +268,26 @@ Real criticallyDampedDerivativeGain(Real proportionalGain) {
 SIMBICON::SIMBICON(Biped& biped) : m_biped(biped),
     m_forces(m_biped.getForceSubsystem()) {
 
-    // Proportional (position) gains (kp).
     m_proportionalGains[generic] = 300;
-    m_proportionalGains[neck] = 20;
-    m_proportionalGains[back] = 200;
-    m_proportionalGains[hip_flexion_adduction] = 500;
-    m_proportionalGains[hip_rotation] = 100;
+    m_proportionalGains[neck] = 100;
+    m_proportionalGains[back] = 300;
+    m_proportionalGains[hip_flexion_adduction] = 1000;
+    m_proportionalGains[hip_rotation] = 300;
     m_proportionalGains[knee] = 300;
-    m_proportionalGains[arm_flexion_adduction] = 10;
-    m_proportionalGains[arm_rotation] = 5;
-    m_proportionalGains[ankle_flexion] = 100;
-    m_proportionalGains[ankle_inversion] = 50;
-    m_proportionalGains[toe] = 25;
+    m_proportionalGains[arm_flexion_adduction] = 300;
+    m_proportionalGains[arm_rotation] = 300;
+    m_proportionalGains[ankle_flexion] = 300;
+    m_proportionalGains[ankle_inversion] = 30;
+    m_proportionalGains[toe] = 30;
 
-    // Derivative (speed) gains; mostly chosen for critical damping.
     m_derivativeGains[generic] = criticallyDampedDerivativeGain(
             m_proportionalGains[generic]);
     m_derivativeGains[neck] = criticallyDampedDerivativeGain(
             m_proportionalGains[neck]);
     m_derivativeGains[back] = criticallyDampedDerivativeGain(
             m_proportionalGains[back]);
-    m_derivativeGains[hip_flexion_adduction] = criticallyDampedDerivativeGain(
-            m_proportionalGains[hip_flexion_adduction]);
+    // Overdamped.
+    m_derivativeGains[hip_flexion_adduction] = 100;
     m_derivativeGains[hip_rotation] = criticallyDampedDerivativeGain(
             m_proportionalGains[hip_rotation]);
     m_derivativeGains[knee] = criticallyDampedDerivativeGain(
@@ -418,11 +400,7 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
 	}
 #endif
     double kp, kd; // position, derivative gains for hip flex/adduction
-    #ifdef USE_ORIG_GAINS
-    kp = HipFlexionAdductionKp; kd = HipFlexionAdductionKd;
-    #else
-    ::calcGainsFromStrength(HipFlexionAdductionStrength, kp, kd);
-    #endif
+    calcGainsFromStrength(hip_flexion_adduction, kp, kd);
 	double cd = 0.2; // global tipping feedback
 	double cv = 0.2;
 
@@ -472,8 +450,8 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
 
 #ifdef USE_GLOBAL_ANKLE
     double kpaflex, kdaflex, kpainv, kdainv; // gains for ankle flex, inversion
-    ::calcGainsFromStrength(AnkleFlexionStrength, kpaflex, kdaflex);
-    ::calcGainsFromStrength(AnkleInversionStrength, kpainv, kdainv);
+    calcGainsFromStrength(ankle_flexion, kpaflex, kdaflex);
+    calcGainsFromStrength(ankle_inversion, kpainv, kdainv);
 	controls[ankle_r_dorsiflexion] =
         clamp(  kpaflex*(0. - _curRFootAngle[0])
               - 0.*kdaflex*RFootAngleVelEst[0], kpaflex);
@@ -490,7 +468,7 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
 
 #ifdef USE_GLOBAL_HIPROT
     double kphrot, kdhrot; // gains for hip rotation
-    ::calcGainsFromStrength(HipRotationStrength, kphrot, kdhrot);
+    calcGainsFromStrength(hip_rotation, kphrot, kdhrot);
 	if (   (sth == hip_r_flexion && _curRFootContactForce > 100)
         || (sth == hip_l_flexion  && _curLFootContactForce > 100))
     {
@@ -536,26 +514,26 @@ void SIMBICON::computeControls(const State& s, Vector& controls) const
 		else if (   i == Biped::shoulder_r_flexion   || i == Biped::shoulder_l_flexion
                  || i == Biped::shoulder_r_adduction || i == Biped::shoulder_l_adduction
                  || i == Biped::elbow_r_flexion      || i == Biped::elbow_l_flexion) {
-            ::calcGainsFromStrength(ArmFlexionAdductionStrength, kp, kd);
+            calcGainsFromStrength(arm_flexion_adduction, kp, kd);
 		}
 		else if (   i == Biped::shoulder_r_rotation || i == Biped::shoulder_l_rotation
                  || i == Biped::elbow_r_rotation    || i == Biped::elbow_l_rotation) {
-            ::calcGainsFromStrength(ArmRotationStrength, kp, kd);
+            calcGainsFromStrength(arm_rotation, kp, kd);
 		}
 		else if (i == Biped::hip_r_rotation || i == Biped::hip_l_rotation) {
-            ::calcGainsFromStrength(HipRotationStrength, kp, kd);
+            calcGainsFromStrength(hip_rotation, kp, kd);
 		}
 		else if (i == Biped::knee_r_extension || i == Biped::knee_l_extension) {
-            ::calcGainsFromStrength(KneeStrength, kp, kd);
+            calcGainsFromStrength(knee, kp, kd);
 		}
         else if (i == Biped::ankle_r_dorsiflexion || i == Biped::ankle_l_dorsiflexion) {
-            ::calcGainsFromStrength(AnkleFlexionStrength, kp, kd);
+            calcGainsFromStrength(ankle_flexion, kp, kd);
         }
         else if (i == Biped::ankle_r_inversion || i == Biped::ankle_l_inversion) {
-            ::calcGainsFromStrength(AnkleInversionStrength, kp, kd);
+            calcGainsFromStrength(ankle_inversion, kp, kd);
         }
 		else if (i == Biped::mtp_r_dorsiflexion || i == Biped::mtp_l_dorsiflexion) { // toe
-            ::calcGainsFromStrength(ToeStrength, kp, kd);
+            calcGainsFromStrength(toe, kp, kd);
 		}
 
 		if (simbiconState >= STATE0) {
