@@ -198,7 +198,7 @@ private:
     // TODO
     Real coordPDControl(const State& s,
             const Biped::Coordinate coord, const GainGroup gainGroup,
-            const Real thetad, Vector& controls) const
+            const Real thetad, Vector& mobForces) const
     {
         // Prepare quantities.
         Real kp = m_proportionalGains.at(gainGroup);
@@ -211,7 +211,6 @@ private:
 
         // Update the proper entry in mobForces.
         // TODO m_biped.addInForce(coord, force, mobForces);
-        controls[coord] = force;
 
         return force;
     }
@@ -513,33 +512,33 @@ void SIMBICON::computeControls(const State& s, Vector& controls) const
 
     // For most joints, track target theta of 0.0 degrees.
     // ===================================================
-    coordPDControl(s, Biped::neck_extension, neck, 0.0, controls);
-    coordPDControl(s, Biped::neck_bending, neck, 0.0, controls);
-    coordPDControl(s, Biped::neck_rotation, neck, 0.0, controls);
+    coordPDControl(s, Biped::neck_extension, neck, 0.0, mobForces);
+    coordPDControl(s, Biped::neck_bending, neck, 0.0, mobForces);
+    coordPDControl(s, Biped::neck_rotation, neck, 0.0, mobForces);
 
-    coordPDControl(s, Biped::back_tilt, back, 0.0, controls);
-    coordPDControl(s, Biped::back_list, back, 0.0, controls);
-    coordPDControl(s, Biped::back_rotation, back, 0.0, controls);
+    coordPDControl(s, Biped::back_tilt, back, 0.0, mobForces);
+    coordPDControl(s, Biped::back_list, back, 0.0, mobForces);
+    coordPDControl(s, Biped::back_rotation, back, 0.0, mobForces);
 
-    coordPDControl(s, Biped::shoulder_r_flexion, arm_flexion_adduction, 0.0, controls);
-    coordPDControl(s, Biped::shoulder_l_flexion, arm_flexion_adduction, 0.0, controls);
-    coordPDControl(s, Biped::shoulder_r_adduction, arm_flexion_adduction, 0.0, controls);
-    coordPDControl(s, Biped::shoulder_l_adduction, arm_flexion_adduction, 0.0, controls);
-    coordPDControl(s, Biped::elbow_r_flexion, arm_flexion_adduction, 0.0, controls);
-    coordPDControl(s, Biped::elbow_l_flexion, arm_flexion_adduction, 0.0, controls);
+    coordPDControl(s, Biped::shoulder_r_flexion, arm_flexion_adduction, 0.0, mobForces);
+    coordPDControl(s, Biped::shoulder_l_flexion, arm_flexion_adduction, 0.0, mobForces);
+    coordPDControl(s, Biped::shoulder_r_adduction, arm_flexion_adduction, 0.0, mobForces);
+    coordPDControl(s, Biped::shoulder_l_adduction, arm_flexion_adduction, 0.0, mobForces);
+    coordPDControl(s, Biped::elbow_r_flexion, arm_flexion_adduction, 0.0, mobForces);
+    coordPDControl(s, Biped::elbow_l_flexion, arm_flexion_adduction, 0.0, mobForces);
 
-    coordPDControl(s, Biped::shoulder_r_rotation, arm_rotation, 0.0, controls);
-    coordPDControl(s, Biped::shoulder_l_rotation, arm_rotation, 0.0, controls);
-    coordPDControl(s, Biped::elbow_r_rotation, arm_rotation, 0.0, controls);
-    coordPDControl(s, Biped::elbow_l_rotation, arm_rotation, 0.0, controls);
-    coordPDControl(s, Biped::hip_r_rotation, hip_rotation, 0.0, controls);
-    coordPDControl(s, Biped::hip_l_rotation, hip_rotation, 0.0, controls);
+    coordPDControl(s, Biped::shoulder_r_rotation, arm_rotation, 0.0, mobForces);
+    coordPDControl(s, Biped::shoulder_l_rotation, arm_rotation, 0.0, mobForces);
+    coordPDControl(s, Biped::elbow_r_rotation, arm_rotation, 0.0, mobForces);
+    coordPDControl(s, Biped::elbow_l_rotation, arm_rotation, 0.0, mobForces);
+    coordPDControl(s, Biped::hip_r_rotation, hip_rotation, 0.0, mobForces);
+    coordPDControl(s, Biped::hip_l_rotation, hip_rotation, 0.0, mobForces);
 
-    coordPDControl(s, Biped::ankle_r_inversion, ankle_inversion, 0.0, controls);
-    coordPDControl(s, Biped::ankle_l_inversion, ankle_inversion, 0.0, controls);
+    coordPDControl(s, Biped::ankle_r_inversion, ankle_inversion, 0.0, mobForces);
+    coordPDControl(s, Biped::ankle_l_inversion, ankle_inversion, 0.0, mobForces);
 
-    coordPDControl(s, Biped::mtp_r_dorsiflexion, toe, 0.0, controls);
-    coordPDControl(s, Biped::mtp_l_dorsiflexion, toe, 0.0, controls);
+    coordPDControl(s, Biped::mtp_r_dorsiflexion, toe, 0.0, mobForces);
+    coordPDControl(s, Biped::mtp_l_dorsiflexion, toe, 0.0, mobForces);
 
     // Deal with limbs whose target angle is affected by the state machine.
     // ====================================================================
@@ -587,9 +586,9 @@ void SIMBICON::computeControls(const State& s, Vector& controls) const
             stance_ankle_dorsiflexion = Biped::ankle_r_dorsiflexion;
         }
 
-        coordPDControl(s, swing_knee_extension, knee, -1.1, controls);
-        coordPDControl(s, swing_ankle_dorsiflexion, ankle_flexion, 0.6, controls);
-        coordPDControl(s, stance_knee_extension, knee, -0.05, controls);
+        coordPDControl(s, swing_knee_extension, knee, -1.1, mobForces);
+        coordPDControl(s, swing_ankle_dorsiflexion, ankle_flexion, 0.6, mobForces);
+        coordPDControl(s, stance_knee_extension, knee, -0.05, mobForces);
 
         // Apply swing/stance-dependent PD control to lower limb sagittal coords
         // ---------------------------------------------------------------------
