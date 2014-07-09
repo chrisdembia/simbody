@@ -128,6 +128,13 @@ public:
         return s.getU()[getUIndex(coord)];
     }
 
+    /// Pull out from mobForces the mobility force corresponding to the
+    /// provided coord.
+    Real getForce(const Coordinate coord, const Vector& mobForces)
+    {
+        return mobForces[getUIndex(coord)];
+    }
+
     /// Add in a generalized force into the proper place in `mobForces`,
     /// as determined by `coord`.
     void addInForce(const Coordinate coord, const Real force,
