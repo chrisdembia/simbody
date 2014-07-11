@@ -37,6 +37,7 @@ using namespace SimTK;
 // Normally SIMBICON has 4 states per gait cycle (i.e. 2 per leg), 2 state is
 // simplified and not as realistic.
 #define TWO_STATE
+// TODO USE_GLOBAL_HIPROT
 // Drop landing doesn't use controller so you can run with models other than
 // the humanoid upon which the controller depends.
 //#define DROP_LANDING
@@ -316,8 +317,6 @@ private:
 	double _curSWTAngle[2];
 	double _lastTrunkAngle[2];
 	double _curTrunkAngle[2];
-	double _lastPelvisRotation;
-    double _curPelvisRotation;
 
 #ifndef RIGID_CONTACT
     double _lastRFootContactForce;
@@ -396,8 +395,6 @@ SIMBICON::SIMBICON(Biped& biped,
 		_lastTrunkAngle[i] = -100.0;
 		_curTrunkAngle[i] = -100.0;
 	}
-	_lastPelvisRotation = -100.0;
-	_curPelvisRotation = -100.0;
 
 }
 
@@ -501,7 +498,6 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
 
 	double trunkAngleVelEst[2] = {0, 0};
 	double SWTAngleVelEst[2] = {0, 0};
-	double PelvisRotationVelEst = 0;
 	if (_lastTrunkAngle[0] > -100) {
 		// check there's a valid value for the _last*,
 		// otherwise just use 0 for vel
@@ -513,8 +509,6 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
 					(_curSWTAngle[i] - _lastSWTAngle[i])/STATE_UPD_STEPSIZE;
 			}
 		}
-		PelvisRotationVelEst =
-			(_curPelvisRotation - _lastPelvisRotation)/STATE_UPD_STEPSIZE;
 	}
 
 
@@ -691,7 +685,6 @@ computeSecondaryStateVals(const State& s, Real lForce, Real rForce) {
 		_lastSWTAngle[i] = _curSWTAngle[i];
 		_lastTrunkAngle[i] = _curTrunkAngle[i];
 	}
-	_lastPelvisRotation = _curPelvisRotation;
 
 	// Update trunk and swing thigh global orientations in the saggital and
 	// coronal planes (by projecting the up vectors of the bodies in to the
@@ -711,15 +704,6 @@ computeSecondaryStateVals(const State& s, Real lForce, Real rForce) {
 	Vec3 projUpThighCor = upThigh - dot(upThigh, corN)*corN;
 	_curSWTAngle[1] =
 		acos(dot(projUpThighCor.normalize(), ZinCor)) - Pi/2;
-
-
-#ifdef USE_GLOBAL_HIPROT
-	Vec3 frontPelvis;
-	getFrontVectorInGround(s, pelvis, frontPelvis);
-
-	frontPelvis[1] = 0.0; // project to 2d
-	_curPelvisRotation = acos(dot(frontPelvis.normalize(), Vec3(0.0, 0.0, 1.0))) - Pi/2;
-#endif
 
 }
 
