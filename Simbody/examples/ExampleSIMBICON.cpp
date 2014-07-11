@@ -554,6 +554,11 @@ void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForc
     coordPDControl(s, Biped::hip_r_rotation, hip_rotation, 0.0, mobForces);
     coordPDControl(s, Biped::hip_l_rotation, hip_rotation, 0.0, mobForces);
 
+    coordPDControl(s, Biped::hip_r_flexion, generic, 0.0, mobForces);
+    coordPDControl(s, Biped::hip_l_flexion, generic, 0.0, mobForces);
+    coordPDControl(s, Biped::hip_r_adduction, generic, 0.0, mobForces);
+    coordPDControl(s, Biped::hip_l_adduction, generic, 0.0, mobForces);
+
     coordPDControl(s, Biped::ankle_r_inversion, ankle_inversion, 0.0, mobForces);
     coordPDControl(s, Biped::ankle_l_inversion, ankle_inversion, 0.0, mobForces);
 
@@ -693,6 +698,7 @@ void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForc
             gainGroup = toe;
 		}
         else {
+            continue;
 // TODO            std::cout << "DEBUG " << coordinate_strings[Biped::Coordinate(i)] << std::endl;
         }
 
