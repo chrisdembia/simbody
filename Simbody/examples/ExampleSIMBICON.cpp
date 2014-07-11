@@ -532,19 +532,16 @@ void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForc
     coordPDControl(s, Biped::neck_bending, neck, 0.0, mobForces);
     coordPDControl(s, Biped::neck_rotation, neck, 0.0, mobForces);
 
+    coordPDControl(s, Biped::back_tilt, back, 0.0, mobForces);
+    coordPDControl(s, Biped::back_list, back, 0.0, mobForces);
+    coordPDControl(s, Biped::back_rotation, back, 0.0, mobForces);
+
     coordPDControl(s, Biped::shoulder_r_flexion, arm_flexion_adduction, 0.0, mobForces);
     coordPDControl(s, Biped::shoulder_l_flexion, arm_flexion_adduction, 0.0, mobForces);
     coordPDControl(s, Biped::shoulder_r_adduction, arm_flexion_adduction, 0.0, mobForces);
     coordPDControl(s, Biped::shoulder_l_adduction, arm_flexion_adduction, 0.0, mobForces);
     coordPDControl(s, Biped::elbow_r_flexion, arm_flexion_adduction, 0.0, mobForces);
     coordPDControl(s, Biped::elbow_l_flexion, arm_flexion_adduction, 0.0, mobForces);
-    /* TODO
-    // For most joints, track target theta of 0.0 degrees.
-    // ===================================================
-
-    coordPDControl(s, Biped::back_tilt, back, 0.0, mobForces);
-    coordPDControl(s, Biped::back_list, back, 0.0, mobForces);
-    coordPDControl(s, Biped::back_rotation, back, 0.0, mobForces);
 
     coordPDControl(s, Biped::shoulder_r_rotation, arm_rotation, 0.0, mobForces);
     coordPDControl(s, Biped::shoulder_l_rotation, arm_rotation, 0.0, mobForces);
@@ -558,6 +555,9 @@ void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForc
 
     coordPDControl(s, Biped::mtp_r_dorsiflexion, toe, 0.0, mobForces);
     coordPDControl(s, Biped::mtp_l_dorsiflexion, toe, 0.0, mobForces);
+    /* TODO
+    // For most joints, track target theta of 0.0 degrees.
+    // ===================================================
 
     // Deal with limbs whose target angle is affected by the state machine.
     // ====================================================================
@@ -658,6 +658,7 @@ void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForc
             gainGroup = neck;
 		}
 		else if (i == Biped::back_tilt || i == Biped::back_list || i == Biped::back_rotation) {
+            continue;
             gainGroup = back;
 		}
 		else if (   i == Biped::shoulder_r_flexion   || i == Biped::shoulder_l_flexion
@@ -668,9 +669,11 @@ void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForc
 		}
 		else if (   i == Biped::shoulder_r_rotation || i == Biped::shoulder_l_rotation
                  || i == Biped::elbow_r_rotation    || i == Biped::elbow_l_rotation) {
+            continue;
             gainGroup = arm_rotation;
 		}
 		else if (i == Biped::hip_r_rotation || i == Biped::hip_l_rotation) {
+            continue;
             gainGroup = hip_rotation;
 		}
 		else if (i == Biped::knee_r_extension || i == Biped::knee_l_extension) {
@@ -680,9 +683,11 @@ void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForc
             gainGroup = ankle_flexion;
         }
         else if (i == Biped::ankle_r_inversion || i == Biped::ankle_l_inversion) {
+            continue;
             gainGroup = ankle_inversion;
         }
 		else if (i == Biped::mtp_r_dorsiflexion || i == Biped::mtp_l_dorsiflexion) {
+            continue;
             gainGroup = toe;
 		}
 
