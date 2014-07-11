@@ -37,11 +37,6 @@ using namespace SimTK;
 // Normally SIMBICON has 4 states per gait cycle (i.e. 2 per leg), 2 state is
 // simplified and not as realistic.
 #define TWO_STATE
-// Torque angle to be flat relative to ground (not in original SIMBICON paper)
-//#define USE_GLOBAL_ANKLE
-// Aim hip towards a global orientation (prevents meandering) (Not implemented
-// for rigid contact because it depends on checking force above some maximum.)
-//#define USE_GLOBAL_HIPROT
 // Drop landing doesn't use controller so you can run with models other than
 // the humanoid upon which the controller depends.
 //#define DROP_LANDING
@@ -52,12 +47,12 @@ const Vec3 UnitX(1.0, 0.0, 0.0);
 const Vec3 UnitY(0.0, 1.0, 0.0);
 const Vec3 UnitZ(0.0, 0.0, 1.0);
 
-double clamp( double x, double maxTorque ) {
-	if (x > maxTorque)
-		x = maxTorque;
+double clamp( double x, double max) {
+	if (x > max)
+		x = max;
 
-	if (x < -maxTorque)
-		x = -maxTorque;
+	if (x < -max)
+		x = -max;
 
 	return x;
 }
@@ -509,8 +504,8 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
 	double thetad = m_swh[stateIdx];
     double kp, kd; // position, derivative gains for hip flex/adduction
     calcGainsFromStrength(hip_flexion_adduction, kp, kd);
-	double cd = 0.2; // global tipping feedback
-	double cv = 0.2;
+	double cd = 0.2; // global tipping feedback m_cd[stateIdx] TODO
+	double cv = m_cv[stateIdx];
 
 	double trunkAngleVelEst[2] = {0, 0};
 	double SWTAngleVelEst[2] = {0, 0};
@@ -555,36 +550,6 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
 	controls[sthc] = sign*(kp*(0. - _curTrunkAngle[1]) - kd*trunkAngleVelEst[1]);
 	controls[sthc] -= controls[swhc];
 	controls[sthc] = clamp(controls[sthc], kp);
-
-#ifdef USE_GLOBAL_ANKLE
-    double kpaflex, kdaflex, kpainv, kdainv; // gains for ankle flex, inversion
-    calcGainsFromStrength(ankle_flexion, kpaflex, kdaflex);
-    calcGainsFromStrength(ankle_inversion, kpainv, kdainv);
-	controls[ankle_r_dorsiflexion] =
-        clamp(  kpaflex*(0. - _curRFootAngle[0])
-              - 0.*kdaflex*RFootAngleVelEst[0], kpaflex);
-	controls[ankle_r_inversion] =
-        clamp( -kpainv*(0. - _curRFootAngle[1])
-              + kdainv*RFootAngleVelEst[1], kpainv);
-	controls[ankle_l_dorsiflexion] =
-        clamp(  kpaflex*(0. - _curLFootAngle[0])
-              - 0.*kdaflex*LFootAngleVelEst[0], kpaflex);
-	controls[ankle_l_inversion] =
-        clamp(  kpainv*(0. - _curLFootAngle[1])
-              - kdainv*LFootAngleVelEst[1], kpainv);
-#endif
-
-#ifdef USE_GLOBAL_HIPROT
-    double kphrot, kdhrot; // gains for hip rotation
-    calcGainsFromStrength(hip_rotation, kphrot, kdhrot);
-	if (   (sth == hip_r_flexion && _curRFootContactForce > 100)
-        || (sth == hip_l_flexion  && _curLFootContactForce > 100))
-    {
-		controls[sth+1] = clamp(sign*( -kphrot*(0. - _curPelvisRotation)
-                                      + kdhrot*PelvisRotationVelEst ),
-                                kphrot);
-	}
-#endif
 
 }
 
