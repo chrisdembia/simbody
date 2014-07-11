@@ -603,7 +603,6 @@ void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForc
 
     // Which leg is in stance?
     // -----------------------
-
     if (simbiconState != UNKNOWN)
     {
         Biped::Coordinate swing_knee_extension;
@@ -660,34 +659,6 @@ void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForc
         coordPDControl(s, Biped::ankle_l_dorsiflexion, ankle_flexion, 0.0, mobForces);
         coordPDControl(s, Biped::ankle_r_dorsiflexion, ankle_flexion, 0.0, mobForces);
     }
-
-        // Apply swing/stance-dependent PD control to lower limb sagittal coords
-        // ---------------------------------------------------------------------
-        // simbiconState stateIdx
-        // ------------- --------
-        // 0             0
-        // 1             1
-        // 2             0
-        // 3             1
-        /* TODO
-        const int stateIdx = simbiconState % 2;
-        // Swing.
-        coordPDControl(s, swing_hip_flexion, hip_flexion_adduction,
-                m_swh[stateIdx], mobForces);
-        // TODO
-        //coordPDControl(s, swing_hip_adduction, hip_flexion_adduction,
-        //        0.0, mobForces);
-        coordPDControl(s, swing_knee_extension, knee,
-                m_swk[stateIdx], mobForces);
-        coordPDControl(s, swing_ankle_dorsiflexion, ankle_flexion,
-                m_swa[stateIdx], mobForces);
-
-        // Stance. No hip, since stance hip is used for balance.
-        coordPDControl(s, stance_knee_extension, knee,
-                m_stk[stateIdx], mobForces);
-        coordPDControl(s, stance_ankle_dorsiflexion, ankle_flexion,
-                m_sta[stateIdx], mobForces);
-                */
 
 	if (simbiconState >= STATE0) {
 		fillInHipJointControls(s, controls);
