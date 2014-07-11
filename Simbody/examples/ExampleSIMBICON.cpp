@@ -31,6 +31,7 @@
 using namespace std;
 using namespace SimTK;
 
+
 // #define RIGID_CONTACT
 
 // Normally SIMBICON has 4 states per gait cycle (i.e. 2 per leg), 2 state is
@@ -553,16 +554,12 @@ void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForc
     coordPDControl(s, Biped::hip_r_rotation, hip_rotation, 0.0, mobForces);
     coordPDControl(s, Biped::hip_l_rotation, hip_rotation, 0.0, mobForces);
 
-    coordPDControl(s, Biped::hip_r_flexion, generic, 0.0, mobForces);
-    coordPDControl(s, Biped::hip_l_flexion, generic, 0.0, mobForces);
-    coordPDControl(s, Biped::hip_r_adduction, generic, 0.0, mobForces);
-    coordPDControl(s, Biped::hip_l_adduction, generic, 0.0, mobForces);
-
     coordPDControl(s, Biped::ankle_r_inversion, ankle_inversion, 0.0, mobForces);
     coordPDControl(s, Biped::ankle_l_inversion, ankle_inversion, 0.0, mobForces);
 
     coordPDControl(s, Biped::mtp_r_dorsiflexion, toe, 0.0, mobForces);
     coordPDControl(s, Biped::mtp_l_dorsiflexion, toe, 0.0, mobForces);
+    /* TODO
 
     // Deal with limbs whose target angle is affected by the state machine.
     // ====================================================================
@@ -612,7 +609,7 @@ void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForc
         coordPDControl(s, swing_knee_extension, knee, -1.1, mobForces);
         coordPDControl(s, swing_ankle_dorsiflexion, ankle_flexion, 0.6, mobForces);
         coordPDControl(s, stance_knee_extension, knee, -0.05, mobForces);
-    }
+        */
 
         // Apply swing/stance-dependent PD control to lower limb sagittal coords
         // ---------------------------------------------------------------------
@@ -642,7 +639,6 @@ void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForc
                 m_sta[stateIdx], mobForces);
                 */
 
-    /* TODO
 	int swh = Biped::hip_r_flexion;
 	int sth = Biped::hip_l_flexion;
 
@@ -697,7 +693,7 @@ void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForc
             gainGroup = toe;
 		}
         else {
-            std::cout << "DEBUG " << coordinate_strings[Biped::Coordinate(i)] << std::endl;
+// TODO            std::cout << "DEBUG " << coordinate_strings[Biped::Coordinate(i)] << std::endl;
         }
 
 		if (simbiconState >= STATE0) {
@@ -722,7 +718,6 @@ void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForc
 
         controls[i] = coordPDControlControls(s, Biped::Coordinate(i), gainGroup, thetad); // TODO controls.
 	}
-    */
 
     
 	if (simbiconState >= STATE0) {
@@ -1031,6 +1026,11 @@ private:
 //==============================================================================
 int main(int argc, char **argv)
 {
+// TODO
+Vector orig;
+std::string origAsString = "~[0.996609 0.0295878 0.064981 -0.0410475 1.58194 1.30901 -0.126126 -0.0226194 0.00668178 -0.00197447 0.0619336 -0.0497828 -0.0279272 0.00388359 0.00695986 0.00386386 0.000842296 0.00031449 -0.0130121 0.00666864 -0.00444311 -5.93963e-06 -0.000837548 0.205327 0.0229502 -0.0517189 -0.3854 0.170585 -0.035032 0.0773673 0.572483 0.0199089 0.0177721 -0.920657 0.524068 -0.0238833 0.235308 -0.563026 -1.93606 0.352619 0.9611 0.104494 -0.104818 0.0277442 -0.0119722 -0.00519416 -0.203116 0.272666 0.384122 -0.0707048 -0.0760685 -0.0571402 -0.024149 -0.0134003 0.116814 0.0146574 0.0571261 0.0004472 0.00915809 -2.17252 0.814301 1.33145 1.88792 -0.00255727 -0.0102517 0.508182 2.21343 -0.432101 0.0321825 -0.65675 -0.000677057 -0.0137553 -0.395188]";
+istringstream iss(origAsString);
+iss >> orig;
     try {
 
 	double finalTime = 1000;
@@ -1117,6 +1117,7 @@ int main(int argc, char **argv)
     try {
         ts.stepTo(1.5); // TODO Infinity); // RUN
         std::cout << "y=" << ts.getState().getY() << std::endl;
+        std::cout << "normRMS: " << (orig - ts.getState().getY()).normRMS() << std::endl;
 
     } catch (const std::exception& e) {
         std::cout << "ERROR: " << e.what() << std::endl;
