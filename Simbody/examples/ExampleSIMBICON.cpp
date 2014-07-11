@@ -606,39 +606,23 @@ void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForc
 
     if (simbiconState != UNKNOWN)
     {
-        Biped::Coordinate swing_hip_flexion;
-        Biped::Coordinate swing_hip_adduction;
         Biped::Coordinate swing_knee_extension;
         Biped::Coordinate swing_ankle_dorsiflexion;
-
-        Biped::Coordinate stance_hip_flexion;
-        Biped::Coordinate stance_hip_adduction;
         Biped::Coordinate stance_knee_extension;
         Biped::Coordinate stance_ankle_dorsiflexion;
         if (simbiconState == STATE0 || simbiconState == STATE1)
         {
             // Left leg is in stance.
-            swing_hip_flexion = Biped::hip_r_flexion;
-            swing_hip_adduction = Biped::hip_r_adduction;
             swing_knee_extension = Biped::knee_r_extension;
             swing_ankle_dorsiflexion = Biped::ankle_r_dorsiflexion;
-
-            stance_hip_flexion = Biped::hip_l_flexion;
-            stance_hip_adduction = Biped::hip_l_adduction;
             stance_knee_extension = Biped::knee_l_extension;
             stance_ankle_dorsiflexion = Biped::ankle_l_dorsiflexion;
         }
         else if (simbiconState == STATE2 || simbiconState == STATE3)
         {
             // Right leg is in stance.
-            swing_hip_flexion = Biped::hip_l_flexion;
-            swing_hip_adduction = Biped::hip_l_adduction;
             swing_knee_extension = Biped::knee_l_extension;
             swing_ankle_dorsiflexion = Biped::ankle_l_dorsiflexion;
-
-            stance_hip_flexion = Biped::hip_r_flexion;
-            // TODO
-            stance_hip_adduction = Biped::hip_r_adduction;
             stance_knee_extension = Biped::knee_r_extension;
             stance_ankle_dorsiflexion = Biped::ankle_r_dorsiflexion;
         }
@@ -848,12 +832,12 @@ void SIMBICON::updateSIMBICONState(const State& s) const
         // Left stance.
         case STATE0:
 
-            // Stay in this state for \delta t seconds. TODO
+            // Stay in this state for \delta t seconds.
             if (duration > m_deltaT[stateIdx]) {
                 setSIMBICONState(s, STATE1, lContact, rContact);
             }
             // Already entered right stance; skip STATE1.
-            else if (rContact && duration > m_minSIMBICONStateDuration) { // TODO min duration.
+            else if (rContact && duration > m_minSIMBICONStateDuration) {
                 setSIMBICONState(s, STATE2, lContact, rContact);
             }
             break;
@@ -862,7 +846,7 @@ void SIMBICON::updateSIMBICONState(const State& s) const
         case STATE1:
 
             // Stay in this state until the right foot makes contact.
-            if (rContact && duration > m_minSIMBICONStateDuration) { // TODO min duration.
+            if (rContact && duration > m_minSIMBICONStateDuration) {
                 setSIMBICONState(s, STATE2, lContact, rContact);
             }
             break;
@@ -870,7 +854,7 @@ void SIMBICON::updateSIMBICONState(const State& s) const
         // Right stance.
         case STATE2:
 
-            // Stay in this state for \delta t seconds. TODO
+            // Stay in this state for \delta t seconds.
             if (duration > m_deltaT[stateIdx]) {
                 setSIMBICONState(s, STATE3, lContact, rContact);
             }
