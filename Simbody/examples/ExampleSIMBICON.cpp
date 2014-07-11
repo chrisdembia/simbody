@@ -82,7 +82,40 @@ class SimbiconStateHandler;
 class SIMBICON : public SimTK::Force::Custom::Implementation
 {
 public:
-	SIMBICON(Biped& biped);
+
+    /// The default arguments define the motion that the controller will try to
+    /// execute. Only symmetrical 4-state motions are permitted. The first
+    /// element of each Vec2 is for states 0 and 2. The second element is for
+    /// states 1 and 3.
+    ///
+    ///   * deltaT: state dwell duration
+    ///   * cd: position balance feedback coefficient
+    ///   * cdLat: position balance feedback coefficient, lateral (for 3D gait)
+    ///   * cv: velocity balance feedback coefficient
+    ///   * cvLat: velocity balance feedback coefficient, lateral (for 3D gait)
+    ///   * tor: torso target angle
+    ///   * swh: swing-hip target angle
+    ///   * swk: swing-knee target angle
+    ///   * swa: swing-ankle target angle
+    ///   * stk: stance-knee target angle
+    ///   * sta: stance-ankle target angle
+    ///
+    /// See the SIMBICON paper for information about these parameters.
+    ///
+	SIMBICON(Biped& biped,
+            Real minSIMBICONStateDuration=0.1,
+            Vec2 deltaT=Vec2(0.30, NaN),
+            Vec2 cd=Vec2(0.5, 0.5),
+            Vec2 cdLat=Vec2(0.5, 0.5),
+            Vec2 cv=Vec2(0.2, 0.2),
+            Vec2 cvLat=Vec2(0.2, 0.2),
+            Vec2 tor=Vec2(0.0, 0.0),
+            Vec2 swh=Vec2(0.5, -0.1),
+            Vec2 swk=Vec2(-1.1, -0.05),
+            Vec2 swa=Vec2(0.6, 0.15),
+            Vec2 stk=Vec2(-0.05, -0.1),
+            Vec2 sta=Vec2(0.0, 0.0)
+            );
 
     /// The possible states of the finite state machine.
     enum SIMBICONState {
@@ -241,6 +274,21 @@ private:
     Biped& m_biped;
     const GeneralForceSubsystem& m_forces;
 
+    const Real m_minSIMBICONStateDuration;
+
+    /// SIMBICON parameters.
+    const Vec2 m_deltaT;
+    const Vec2 m_cd;
+    const Vec2 m_cdLat;
+    const Vec2 m_cv;
+    const Vec2 m_cvLat;
+    const Vec2 m_tor;
+    const Vec2 m_swh;
+    const Vec2 m_swk;
+    const Vec2 m_swa;
+    const Vec2 m_stk;
+    const Vec2 m_sta;
+
     /// Proportional (position) gains (kp).
     std::map<GainGroup, Real> m_proportionalGains;
     /// Derivative (speed) gains; mostly chosen for critical damping.
@@ -304,9 +352,17 @@ Real criticallyDampedDerivativeGain(Real proportionalGain) {
     return 2.0 * std::sqrt(proportionalGain);
 }
 
-SIMBICON::SIMBICON(Biped& biped) : m_biped(biped),
-    m_forces(m_biped.getForceSubsystem()) {
+SIMBICON::SIMBICON(Biped& biped,
+        Real minSIMBICONStateDuration,
+        Vec2 deltaT, Vec2 cd, Vec2 cdLat, Vec2 cv,
+        Vec2 cvLat, Vec2 tor, Vec2 swh, Vec2 swk, Vec2 swa, Vec2 stk, Vec2 sta)
+    : m_biped(biped), m_forces(m_biped.getForceSubsystem()),
+      m_minSIMBICONStateDuration(minSIMBICONStateDuration),
+      m_deltaT(deltaT), m_cd(cd),
+      m_cdLat(cdLat), m_cv(cv), m_cvLat(cvLat), m_tor(tor), m_swh(swh),
+      m_swk(swk), m_swa(swa), m_stk(stk), m_sta(sta)
 
+{
     m_proportionalGains[generic] = 300;
     m_proportionalGains[neck] = 100;
     m_proportionalGains[back] = 300;
@@ -438,12 +494,19 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
 	double d_cor = dot(sagN, d);
 	double v_cor = dot(sagN, v_com);
 
-	double thetad = 0.5;
-#ifndef TWO_STATE
-    if (simbiconState == STATE1 || simbiconState == STATE3)
-		thetad = -0.1;
-	}
+    // simbiconState stateIdx
+    // ------------- --------
+    // 0             0
+    // 1             1
+    // 2             0
+    // 3             1
+    // TODO move stateIdx into a subfunction.
+#ifdef TWO_STATE
+        const int stateIdx = 0;
+#else
+        const int stateIdx = simbiconState % 2;
 #endif
+	double thetad = m_swh[stateIdx];
     double kp, kd; // position, derivative gains for hip flex/adduction
     calcGainsFromStrength(hip_flexion_adduction, kp, kd);
 	double cd = 0.2; // global tipping feedback
@@ -615,28 +678,30 @@ void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForc
             stance_ankle_dorsiflexion = Biped::ankle_r_dorsiflexion;
         }
 
-        coordPDControl(s, stance_ankle_dorsiflexion, ankle_flexion, 0.0,
+
+        // Apply swing/stance-dependent PD control to lower limb sagittal coords
+        // ---------------------------------------------------------------------
+        // simbiconState stateIdx
+        // ------------- --------
+        // 0             0
+        // 1             1
+        // 2             0
+        // 3             1
+#ifdef TWO_STATE
+        const int stateIdx = 0;
+#else
+        const int stateIdx = simbiconState % 2;
+#endif
+
+        coordPDControl(s, swing_knee_extension, knee, m_swk[stateIdx],
+                mobForces);
+        coordPDControl(s, stance_knee_extension, knee, m_stk[stateIdx],
                 mobForces);
 
-        double swing_knee_extension_desired_angle = -1.1;
-        double stance_knee_extension_desired_angle = -0.05;
-        double swing_ankle_dorsiflexion_desired_angle = 0.6;
-
-#ifndef TWO_STATE
-        if (simbiconState == STATE1 || simbiconState == STATE3)
-        {
-            double swing_knee_extension_desired_angle = -0.05;
-            double stance_knee_extension_desired_angle = -0.1;
-            double swing_ankle_dorsiflexion_desired_angle = 0.15;
-        }
-#endif
-        coordPDControl(s, swing_knee_extension, knee,
-                swing_knee_extension_desired_angle, mobForces);
-        coordPDControl(s, stance_knee_extension, knee,
-                stance_knee_extension_desired_angle, mobForces);
-
         coordPDControl(s, swing_ankle_dorsiflexion, ankle_flexion,
-                swing_ankle_dorsiflexion_desired_angle, mobForces);
+                m_swa[stateIdx], mobForces);
+        coordPDControl(s, stance_ankle_dorsiflexion, ankle_flexion,
+                m_sta[stateIdx], mobForces);
     }
     else
     {
@@ -819,11 +884,11 @@ void SIMBICON::updateSIMBICONState(const State& s) const
         case STATE0:
 
             // Stay in this state for \delta t seconds. TODO
-            if (duration > 0.3) {
+            if (duration > m_deltaT[stateIdx]) {
                 setSIMBICONState(s, STATE1, lContact, rContact);
             }
             // Already entered right stance; skip STATE1.
-            else if (rContact && duration > 0.1) { // TODO min duration.
+            else if (rContact && duration > m_minSIMBICONStateDuration) { // TODO min duration.
                 setSIMBICONState(s, STATE2, lContact, rContact);
             }
             break;
@@ -832,7 +897,7 @@ void SIMBICON::updateSIMBICONState(const State& s) const
         case STATE1:
 
             // Stay in this state until the right foot makes contact.
-            if (rContact && duration > 0.1) { // TODO min duration.
+            if (rContact && duration > m_minSIMBICONStateDuration) { // TODO min duration.
                 setSIMBICONState(s, STATE2, lContact, rContact);
             }
             break;
@@ -841,11 +906,11 @@ void SIMBICON::updateSIMBICONState(const State& s) const
         case STATE2:
 
             // Stay in this state for \delta t seconds. TODO
-            if (duration > 0.3) {
+            if (duration > m_deltaT[stateIdx]) {
                 setSIMBICONState(s, STATE3, lContact, rContact);
             }
             // Already entered right stance; skip STATE3.
-            else if (lContact && duration > 0.1) {
+            else if (lContact && duration > m_minSIMBICONStateDuration) {
                 setSIMBICONState(s, STATE0, lContact, rContact);
             }
             break;
@@ -854,7 +919,7 @@ void SIMBICON::updateSIMBICONState(const State& s) const
         case STATE3:
 
             // Stay in this state until the left foot makes contact.
-            if (lContact && duration > 0.1) {
+            if (lContact && duration > m_minSIMBICONStateDuration) {
                 setSIMBICONState(s, STATE0, lContact, rContact);
             }
             break;
