@@ -369,7 +369,12 @@ void SIMBICON::calcForce(const State&         s,
     computeControls(s,controls, mobilityForces);
 
     for (int i=0; i<NumActuators; ++i)
-        mobilityForces[m_biped.getUIndex(Biped::Coordinate(i))] += controls[i];
+    {
+        if (controls[i] != 0)
+        {
+            mobilityForces[m_biped.getUIndex(Biped::Coordinate(i))] = controls[i];
+        }
+    }
 }
 
 
@@ -564,25 +569,24 @@ void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForc
 
     coordPDControl(s, Biped::mtp_r_dorsiflexion, toe, 0.0, mobForces);
     coordPDControl(s, Biped::mtp_l_dorsiflexion, toe, 0.0, mobForces);
-    /* TODO
 
     // Deal with limbs whose target angle is affected by the state machine.
     // ====================================================================
 
     // Which leg is in stance?
     // -----------------------
-    Biped::Coordinate swing_hip_flexion;
-    Biped::Coordinate swing_hip_adduction;
-    Biped::Coordinate swing_knee_extension;
-    Biped::Coordinate swing_ankle_dorsiflexion;
-
-    Biped::Coordinate stance_hip_flexion;
-    Biped::Coordinate stance_hip_adduction;
-    Biped::Coordinate stance_knee_extension;
-    Biped::Coordinate stance_ankle_dorsiflexion;
 
     if (simbiconState != UNKNOWN)
     {
+        Biped::Coordinate swing_hip_flexion;
+        Biped::Coordinate swing_hip_adduction;
+        Biped::Coordinate swing_knee_extension;
+        Biped::Coordinate swing_ankle_dorsiflexion;
+
+        Biped::Coordinate stance_hip_flexion;
+        Biped::Coordinate stance_hip_adduction;
+        Biped::Coordinate stance_knee_extension;
+        Biped::Coordinate stance_ankle_dorsiflexion;
         if (simbiconState == STATE0 || simbiconState == STATE1)
         {
             // Left leg is in stance.
@@ -612,9 +616,19 @@ void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForc
         }
 
         coordPDControl(s, swing_knee_extension, knee, -1.1, mobForces);
-        coordPDControl(s, swing_ankle_dorsiflexion, ankle_flexion, 0.6, mobForces);
         coordPDControl(s, stance_knee_extension, knee, -0.05, mobForces);
-        */
+
+        coordPDControl(s, swing_ankle_dorsiflexion, ankle_flexion, 0.6, mobForces);
+        coordPDControl(s, stance_ankle_dorsiflexion, ankle_flexion, 0.0, mobForces);
+    }
+    else
+    {
+        // TODO can remove later since i'm just doing this to identically match results.
+        coordPDControl(s, Biped::knee_l_extension, knee, 0.0, mobForces);
+        coordPDControl(s, Biped::knee_r_extension, knee, 0.0, mobForces);
+        coordPDControl(s, Biped::ankle_l_dorsiflexion, ankle_flexion, 0.0, mobForces);
+        coordPDControl(s, Biped::ankle_r_dorsiflexion, ankle_flexion, 0.0, mobForces);
+    }
 
         // Apply swing/stance-dependent PD control to lower limb sagittal coords
         // ---------------------------------------------------------------------
@@ -644,6 +658,7 @@ void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForc
                 m_sta[stateIdx], mobForces);
                 */
 
+// TODO    std::cout << "DEBUG computeControls." << std::endl;
 	int swh = Biped::hip_r_flexion;
 	int sth = Biped::hip_l_flexion;
 
@@ -684,9 +699,11 @@ void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForc
             gainGroup = hip_rotation;
 		}
 		else if (i == Biped::knee_r_extension || i == Biped::knee_l_extension) {
+            continue;
             gainGroup = knee;
 		}
         else if (i == Biped::ankle_r_dorsiflexion || i == Biped::ankle_l_dorsiflexion) {
+            continue;
             gainGroup = ankle_flexion;
         }
         else if (i == Biped::ankle_r_inversion || i == Biped::ankle_l_inversion) {
@@ -721,6 +738,7 @@ void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForc
 			}
             #endif
 		}
+          // TODO std::cout << "DEBUG " << coordinate_strings[Biped::Coordinate(i)] << " " << thetad << " gain group: " << gainGroup << std::endl;
 
         controls[i] = coordPDControlControls(s, Biped::Coordinate(i), gainGroup, thetad); // TODO controls.
 	}
