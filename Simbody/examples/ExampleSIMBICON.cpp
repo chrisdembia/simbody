@@ -528,6 +528,9 @@ void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForc
 #else
 
     const SIMBICONState simbiconState = getSIMBICONState(s);
+
+    // For most joints, track target theta of 0.0 degrees.
+    // ===================================================
     coordPDControl(s, Biped::neck_extension, neck, 0.0, mobForces);
     coordPDControl(s, Biped::neck_bending, neck, 0.0, mobForces);
     coordPDControl(s, Biped::neck_rotation, neck, 0.0, mobForces);
@@ -556,8 +559,6 @@ void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForc
     coordPDControl(s, Biped::mtp_r_dorsiflexion, toe, 0.0, mobForces);
     coordPDControl(s, Biped::mtp_l_dorsiflexion, toe, 0.0, mobForces);
     /* TODO
-    // For most joints, track target theta of 0.0 degrees.
-    // ===================================================
 
     // Deal with limbs whose target angle is affected by the state machine.
     // ====================================================================
