@@ -316,10 +316,6 @@ private:
 	double _curSWTAngle[2];
 	double _lastTrunkAngle[2];
 	double _curTrunkAngle[2];
-	double _lastRFootAngle[2];
-	double _curRFootAngle[2];
-	double _lastLFootAngle[2];
-	double _curLFootAngle[2];
 	double _lastPelvisRotation;
     double _curPelvisRotation;
 
@@ -399,10 +395,6 @@ SIMBICON::SIMBICON(Biped& biped,
 		_curSWTAngle[i] = -100.0;
 		_lastTrunkAngle[i] = -100.0;
 		_curTrunkAngle[i] = -100.0;
-		_lastRFootAngle[i] = -100.0;
-		_curRFootAngle[i] = -100.0;
-		_lastLFootAngle[i] = -100.0;
-		_curLFootAngle[i] = -100.0;
 	}
 	_lastPelvisRotation = -100.0;
 	_curPelvisRotation = -100.0;
@@ -509,8 +501,6 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
 
 	double trunkAngleVelEst[2] = {0, 0};
 	double SWTAngleVelEst[2] = {0, 0};
-	double RFootAngleVelEst[2] = {0, 0};
-	double LFootAngleVelEst[2] = {0, 0};
 	double PelvisRotationVelEst = 0;
 	if (_lastTrunkAngle[0] > -100) {
 		// check there's a valid value for the _last*,
@@ -518,10 +508,6 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
 		for (int i = 0; i < 2; i++) {
 			trunkAngleVelEst[i] =
 				(_curTrunkAngle[i] - _lastTrunkAngle[i])/STATE_UPD_STEPSIZE;
-			RFootAngleVelEst[i] =
-				(_curRFootAngle[i] - _lastRFootAngle[i])/STATE_UPD_STEPSIZE;
-			LFootAngleVelEst[i] =
-				(_curLFootAngle[i] - _lastLFootAngle[i])/STATE_UPD_STEPSIZE;
 			if (_lastSWTAngle[i] > -100) {
 				SWTAngleVelEst[i] =
 					(_curSWTAngle[i] - _lastSWTAngle[i])/STATE_UPD_STEPSIZE;
@@ -704,8 +690,6 @@ computeSecondaryStateVals(const State& s, Real lForce, Real rForce) {
 	for (int i = 0; i < 2; i++) {
 		_lastSWTAngle[i] = _curSWTAngle[i];
 		_lastTrunkAngle[i] = _curTrunkAngle[i];
-		_lastLFootAngle[i] = _curLFootAngle[i];
-		_lastRFootAngle[i] = _curRFootAngle[i];
 	}
 	_lastPelvisRotation = _curPelvisRotation;
 
@@ -728,32 +712,6 @@ computeSecondaryStateVals(const State& s, Real lForce, Real rForce) {
 	_curSWTAngle[1] =
 		acos(dot(projUpThighCor.normalize(), ZinCor)) - Pi/2;
 
-
-#ifdef USE_GLOBAL_ANKLE
-	const MobilizedBody& rFoot = m_biped.getBody(Biped::foot_r);
-	const MobilizedBody& lFoot = m_biped.getBody(Biped::foot_l);
-
-	Vec3 upRFoot, upLFoot;
-	getUpVectorInGround(s, rFoot, upRFoot);
-	getUpVectorInGround(s, lFoot, upLFoot);
-
-	Vec3 projUpRFoot = upRFoot - dot(upRFoot, sagN)*sagN;
-	_curRFootAngle[0] =
-		acos(dot(projUpRFoot.normalize(), XinSag)) - Pi/2;
-
-	Vec3 projUpLFoot = upLFoot - dot(upLFoot, sagN)*sagN;
-	_curLFootAngle[0] =
-		acos(dot(projUpLFoot.normalize(), XinSag)) - Pi/2;
-
-	Vec3 projUpRFootCor = upRFoot - dot(upRFoot, corN)*corN;
-	_curRFootAngle[1] =
-		acos(dot(projUpRFootCor.normalize(), ZinCor)) - Pi/2;
-
-	Vec3 projUpLFootCor = upLFoot - dot(upLFoot, corN)*corN;
-	_curLFootAngle[1] =
-		acos(dot(projUpLFootCor.normalize(), ZinCor)) - Pi/2;
-
-#endif
 
 #ifdef USE_GLOBAL_HIPROT
 	Vec3 frontPelvis;
