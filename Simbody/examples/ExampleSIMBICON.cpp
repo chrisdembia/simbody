@@ -212,7 +212,7 @@ private:
 
         // Update the proper entry in mobForces.
         m_biped.addInForce(coord, force, mobilityForces);
-        
+
         return force;
     }
     // TODO
@@ -228,7 +228,7 @@ private:
 
         // PD control law:
         Real force = clamp(kp * (thetad - q) - kd * u, kp);
-        
+
         return force;
     }
 
@@ -615,11 +615,28 @@ void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForc
             stance_ankle_dorsiflexion = Biped::ankle_r_dorsiflexion;
         }
 
-        coordPDControl(s, swing_knee_extension, knee, -1.1, mobForces);
-        coordPDControl(s, stance_knee_extension, knee, -0.05, mobForces);
+        coordPDControl(s, stance_ankle_dorsiflexion, ankle_flexion, 0.0,
+                mobForces);
 
-        coordPDControl(s, swing_ankle_dorsiflexion, ankle_flexion, 0.6, mobForces);
-        coordPDControl(s, stance_ankle_dorsiflexion, ankle_flexion, 0.0, mobForces);
+        double swing_knee_extension_desired_angle = -1.1;
+        double stance_knee_extension_desired_angle = -0.05;
+        double swing_ankle_dorsiflexion_desired_angle = 0.6;
+
+#ifndef TWO_STATE
+        if (simbiconState == STATE1 || simbiconState == STATE3)
+        {
+            double swing_knee_extension_desired_angle = -0.05;
+            double stance_knee_extension_desired_angle = -0.1;
+            double swing_ankle_dorsiflexion_desired_angle = 0.15;
+        }
+#endif
+        coordPDControl(s, swing_knee_extension, knee,
+                swing_knee_extension_desired_angle, mobForces);
+        coordPDControl(s, stance_knee_extension, knee,
+                stance_knee_extension_desired_angle, mobForces);
+
+        coordPDControl(s, swing_ankle_dorsiflexion, ankle_flexion,
+                swing_ankle_dorsiflexion_desired_angle, mobForces);
     }
     else
     {
@@ -658,92 +675,6 @@ void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForc
                 m_sta[stateIdx], mobForces);
                 */
 
-// TODO    std::cout << "DEBUG computeControls." << std::endl;
-	int swh = Biped::hip_r_flexion;
-	int sth = Biped::hip_l_flexion;
-
-    if (simbiconState == STATE2 || simbiconState == STATE3) // right stance
-    {
-		swh = Biped::hip_l_flexion;
-		sth = Biped::hip_r_flexion;
-	}
-	int swk = swh + 2; // swing knee
-	int swa = swh + 4; // swing ankle
-	int stk = sth + 2; // stance knee
-	int sta = sth + 4; // stance ankle
-	for (int i = 0; i < NumActuators; i++) {
-        GainGroup gainGroup = generic;
-		double thetad = 0.0;                    // desired angle
-
-		if (i == Biped::neck_extension || i == Biped::neck_bending || i == Biped::neck_rotation) {
-            continue;
-            gainGroup = neck;
-		}
-		else if (i == Biped::back_tilt || i == Biped::back_list || i == Biped::back_rotation) {
-            continue;
-            gainGroup = back;
-		}
-		else if (   i == Biped::shoulder_r_flexion   || i == Biped::shoulder_l_flexion
-                 || i == Biped::shoulder_r_adduction || i == Biped::shoulder_l_adduction
-                 || i == Biped::elbow_r_flexion      || i == Biped::elbow_l_flexion) {
-            continue;
-            gainGroup = arm_flexion_adduction;
-		}
-		else if (   i == Biped::shoulder_r_rotation || i == Biped::shoulder_l_rotation
-                 || i == Biped::elbow_r_rotation    || i == Biped::elbow_l_rotation) {
-            continue;
-            gainGroup = arm_rotation;
-		}
-		else if (i == Biped::hip_r_rotation || i == Biped::hip_l_rotation) {
-            continue;
-            gainGroup = hip_rotation;
-		}
-		else if (i == Biped::knee_r_extension || i == Biped::knee_l_extension) {
-            continue;
-            gainGroup = knee;
-		}
-        else if (i == Biped::ankle_r_dorsiflexion || i == Biped::ankle_l_dorsiflexion) {
-            continue;
-            gainGroup = ankle_flexion;
-        }
-        else if (i == Biped::ankle_r_inversion || i == Biped::ankle_l_inversion) {
-            continue;
-            gainGroup = ankle_inversion;
-        }
-		else if (i == Biped::mtp_r_dorsiflexion || i == Biped::mtp_l_dorsiflexion) {
-            continue;
-            gainGroup = toe;
-		}
-        else {
-            continue;
-// TODO            std::cout << "DEBUG " << coordinate_strings[Biped::Coordinate(i)] << std::endl;
-        }
-
-		if (simbiconState >= STATE0) {
-			if (i == swk)
-				thetad = -1.1;
-			else if (i == swa)
-				thetad = 0.6;
-			else if (i == stk)
-				thetad = -0.05;
-
-            #ifndef TWO_STATE
-            if (simbiconState == STATE1 || simbiconState == STATE3) {
-				if (i == swk)
-					thetad = -0.05;
-				else if (i == swa)
-					thetad = 0.15;
-				else if (i == stk)
-					thetad = -0.1;
-			}
-            #endif
-		}
-          // TODO std::cout << "DEBUG " << coordinate_strings[Biped::Coordinate(i)] << " " << thetad << " gain group: " << gainGroup << std::endl;
-
-        controls[i] = coordPDControlControls(s, Biped::Coordinate(i), gainGroup, thetad); // TODO controls.
-	}
-
-    
 	if (simbiconState >= STATE0) {
 		fillInHipJointControls(s, controls);
     }
@@ -936,7 +867,7 @@ void SIMBICON::updateSIMBICONState(const State& s) const
 }
 
 SimbiconStateHandler::SimbiconStateHandler(Biped& model, SIMBICON& simctrl,
-    Real interval) 
+    Real interval)
         : PeriodicEventHandler(interval), _model(model), _simctrl(simctrl) {
 	}
 
