@@ -318,13 +318,6 @@ private:
 	double _lastTrunkAngle[2];
 	double _curTrunkAngle[2];
 
-#ifndef RIGID_CONTACT
-    double _lastRFootContactForce;
-    double _lastLFootContactForce;
-    double _curRFootContactForce;
-    double _curLFootContactForce;
-#endif
-
     friend SimbiconStateHandler;
 
 };
@@ -657,13 +650,6 @@ void SIMBICON::
 computeSecondaryStateVals(const State& s, Real lForce, Real rForce) {
 	const MobilizedBody& pelvis = m_biped.getBody(Biped::pelvis);
 	const SIMBICONState simbiconState = getSIMBICONState(s);
-
-#ifndef RIGID_CONTACT
-    _lastRFootContactForce = _curRFootContactForce;
-    _lastLFootContactForce = _curLFootContactForce;
-    _curRFootContactForce = rForce;
-    _curLFootContactForce = lForce;
-#endif
 
 	Vec3 upThigh;
     if (simbiconState == STATE0 || simbiconState == STATE1)
