@@ -10,7 +10,7 @@ install:
 build_script:
   # See http://msdn.microsoft.com/en-us/library/ms164311.aspx for
   # command-line options to MSBuild.
-  - MSBuild Simbody.sln /maxcpucount:8 /target:ALL_BUILD /p:Configuration=Release /verbosity:minimal
+  - MSBuild Simbody.sln /maxcpucount:8 /target:ALL_BUILD /p:Configuration=Release /verbosity:quiet
 
 test_script:
   - MSBuild Simbody.sln /maxcpucount:8 /target:RUN_TESTS_PARALLEL /p:Configuration=Release
