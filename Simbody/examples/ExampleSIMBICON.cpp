@@ -24,7 +24,7 @@
 #include "BipedSystem.h"
 #include <Simbody.h>
 
-
+#include <fstream>
 #include <cassert>
 #include <vector>
 
@@ -112,6 +112,9 @@ public:
             Vec2 stk=Vec2(-0.05, -0.1),
             Vec2 sta=Vec2(0.0, 0.0)
             );
+
+    // TODO
+    ~SIMBICON() { m_global_angles_file.close(); }
 
     /// The possible states of the finite state machine.
     enum SIMBICONState {
@@ -320,6 +323,9 @@ private:
 
     friend SimbiconStateHandler;
 
+    // TODO
+    ofstream m_global_angles_file;
+
 };
 
 class SimbiconStateHandler : public SimTK::PeriodicEventHandler {
@@ -346,6 +352,10 @@ SIMBICON::SIMBICON(Biped& biped,
       m_swk(swk), m_swa(swa), m_stk(stk), m_sta(sta)
 
 {
+    // TODO
+    m_global_angles_file.open("global_angles.txt");
+    m_global_angles_file << "time swtangle0 swtangle1 trunkangle0 trunkangle1" << endl;
+
     m_proportionalGains[generic] = 300;
     m_proportionalGains[neck] = 100;
     m_proportionalGains[back] = 300;
@@ -691,6 +701,7 @@ computeSecondaryStateVals(const State& s, Real lForce, Real rForce) {
 	_curSWTAngle[1] =
 		acos(dot(projUpThighCor.normalize(), ZinCor)) - Pi/2;
 
+    m_global_angles_file << s.getTime() << " " << _curSWTAngle[0] << " " << _curSWTAngle[1] << " " << _curTrunkAngle[0] << " " << _curTrunkAngle[1] << endl;
 }
 
 void SIMBICON::updateSIMBICONState(const State& s) const
@@ -798,6 +809,8 @@ void SimbiconStateHandler::handleEvent(State& s, Real accuracy, bool& shouldTerm
 #ifndef DROP_LANDING
     simctrl->computeSecondaryStateVals(s, lForce, rForce);
 #endif
+
+    // TODO
 }
 
 
