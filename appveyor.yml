@@ -1,6 +1,8 @@
 # Syntax for this file:
 # http://www.appveyor.com/docs/appveyor-yml
 
+shallow_clone: true
+
 install:
   - SET PATH=C:\Program Files (x86)\MSBuild\12.0\bin\;%PATH%
   - cmake . -DBUILD_EXAMPLES=OFF -DBUILD_VISUALIZER=OFF -DBUILD_TESTS_AND_EXAMPLES_STATIC=OFF
