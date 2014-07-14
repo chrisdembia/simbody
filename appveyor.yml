@@ -15,4 +15,4 @@ build_script:
   - MSBuild Simbody.sln /maxcpucount:8 /target:ALL_BUILD /p:Configuration=Release
 
 test_script:
-  - MSBuild Simbody.sln /maxcpucount:8 /target:RUN_TESTS_PARALLEL /p:Configuration=Release
+  - ctest -j8 -C "Release"
