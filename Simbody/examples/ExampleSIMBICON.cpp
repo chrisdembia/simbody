@@ -326,11 +326,6 @@ private:
     // TODO
     ofstream m_global_angles_file;
 
-    double _lastRFootContactForce;
-    double _lastLFootContactForce;
-    double _curRFootContactForce;
-    double _curLFootContactForce;
-
 };
 
 class SimbiconStateHandler : public SimTK::PeriodicEventHandler {
@@ -360,6 +355,7 @@ SIMBICON::SIMBICON(Biped& biped,
     // TODO
     m_global_angles_file.open("global_angles.txt");
     m_global_angles_file << "time swtangle0 swtangle1 trunkangle0 trunkangle1" << endl;
+    s.getTime() << " " << _curSWTAngle[0] << " " << _curSWTAngle[1] << " " << _curTrunkAngle[0] << " " << _curTrunkAngle[1] << endl;
 
     m_proportionalGains[generic] = 300;
     m_proportionalGains[neck] = 100;
@@ -665,11 +661,6 @@ void SIMBICON::
 computeSecondaryStateVals(const State& s, Real lForce, Real rForce) {
 	const MobilizedBody& pelvis = m_biped.getBody(Biped::pelvis);
 	const SIMBICONState simbiconState = getSIMBICONState(s);
-
-    _lastRFootContactForce = _curRFootContactForce;
-    _lastLFootContactForce = _curLFootContactForce;
-    _curRFootContactForce = rForce;
-    _curLFootContactForce = lForce;
 
 	Vec3 upThigh;
     if (simbiconState == STATE0 || simbiconState == STATE1)
