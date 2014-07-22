@@ -660,45 +660,146 @@ computeSecondaryStateVals(const State& s, Real lForce, Real rForce) {
 	const MobilizedBody& pelvis = m_biped.getBody(Biped::pelvis);
 	const SIMBICONState simbiconState = getSIMBICONState(s);
 
-	Vec3 upThigh;
-    if (simbiconState == STATE0 || simbiconState == STATE1)
-		getUpVectorInGround(s, m_biped.getBody(Biped::thigh_r), upThigh);
-    else if (simbiconState == STATE2 || simbiconState == STATE3)
-		getUpVectorInGround(s, m_biped.getBody(Biped::thigh_l), upThigh);
+    {
 
-	Vec3 upPelvis;
-	getUpVectorInGround(s, pelvis, upPelvis);
+        Vec3 upThigh;
+        if (simbiconState == STATE0 || simbiconState == STATE1)
+            getUpVectorInGround(s, m_biped.getBody(Biped::thigh_r), upThigh);
+        else if (simbiconState == STATE2 || simbiconState == STATE3)
+            getUpVectorInGround(s, m_biped.getBody(Biped::thigh_l), upThigh);
 
-	Vec3 sagN, corN;
-	getSagCorNormals(s, sagN, corN);
+        Vec3 upPelvis;
+        getUpVectorInGround(s, pelvis, upPelvis);
 
-	Vec3 XinSag = cross(UnitY, sagN);
-	Vec3 ZinCor = -cross(UnitY, corN);
+        Vec3 sagN, corN;
+        getSagCorNormals(s, sagN, corN);
 
-	// Store the current value, use these for velocity estimation
-	for (int i = 0; i < 2; i++) {
-		_lastSWTAngle[i] = _curSWTAngle[i];
-		_lastTrunkAngle[i] = _curTrunkAngle[i];
-	}
+        Vec3 XinSag = cross(UnitY, sagN);
+        Vec3 ZinCor = -cross(UnitY, corN);
 
-	// Update trunk and swing thigh global orientations in the saggital and
-	// coronal planes (by projecting the up vectors of the bodies in to the
-	// planes and calculate angles)
-	Vec3 projUpThigh = upThigh - dot(upThigh, sagN)*sagN;
-	_curSWTAngle[0] =
-		acos(dot(projUpThigh.normalize(), XinSag)) - Pi/2;
+        // Store the current value, use these for velocity estimation
+        for (int i = 0; i < 2; i++) {
+            _lastSWTAngle[i] = _curSWTAngle[i];
+            _lastTrunkAngle[i] = _curTrunkAngle[i];
+        }
 
-	Vec3 projUpPelvis = upPelvis - dot(upPelvis, sagN)*sagN;
-	_curTrunkAngle[0] =
-		acos(dot(projUpPelvis.normalize(), XinSag)) - Pi/2;
+        // Update trunk and swing thigh global orientations in the saggital and
+        // coronal planes (by projecting the up vectors of the bodies in to the
+        // planes and calculate angles)
+        Vec3 projUpThigh = upThigh - dot(upThigh, sagN)*sagN;
+        _curSWTAngle[0] =
+            acos(dot(projUpThigh.normalize(), XinSag)) - Pi/2;
 
-	Vec3 projUpPelvisCor = upPelvis - dot(upPelvis, corN)*corN;
-	_curTrunkAngle[1] =
-		acos(dot(projUpPelvisCor.normalize(), ZinCor)) - Pi/2;
+        Vec3 projUpPelvis = upPelvis - dot(upPelvis, sagN)*sagN;
+        _curTrunkAngle[0] =
+            acos(dot(projUpPelvis.normalize(), XinSag)) - Pi/2;
 
-	Vec3 projUpThighCor = upThigh - dot(upThigh, corN)*corN;
-	_curSWTAngle[1] =
-		acos(dot(projUpThighCor.normalize(), ZinCor)) - Pi/2;
+        Vec3 projUpPelvisCor = upPelvis - dot(upPelvis, corN)*corN;
+        _curTrunkAngle[1] =
+            acos(dot(projUpPelvisCor.normalize(), ZinCor)) - Pi/2;
+
+        Vec3 projUpThighCor = upThigh - dot(upThigh, corN)*corN;
+        _curSWTAngle[1] =
+            acos(dot(projUpThighCor.normalize(), ZinCor)) - Pi/2;
+    }
+
+    if (simbiconState != UNKNOWN) {
+
+        // Which leg is in stance, etc.?
+        // =============================
+        Biped::Coordinate swing_hip_flexion;
+        Biped::Coordinate swing_hip_adduction;
+        Biped::Coordinate stance_hip_flexion;
+        Biped::Coordinate stance_hip_adduction;
+        const MobilizedBody* stanceFoot;
+        const MobilizedBody* stanceThigh;
+        if (simbiconState == STATE0 || simbiconState == STATE1)
+        {
+            // Left leg is in stance.
+            swing_hip_flexion = Biped::hip_r_flexion;
+            swing_hip_adduction = Biped::hip_r_adduction;
+
+            stance_hip_flexion = Biped::hip_l_flexion;
+            stance_hip_adduction = Biped::hip_r_adduction;
+
+            stanceFoot = &m_biped.getBody(Biped::foot_l);
+            stanceThigh = &m_biped.getBody(Biped::thigh_l);
+        }
+        else if (simbiconState == STATE2 || simbiconState == STATE3)
+        {
+            // Right leg is in stance.
+            swing_hip_flexion = Biped::hip_l_flexion;
+            swing_hip_adduction = Biped::hip_l_adduction;
+
+            stance_hip_flexion = Biped::hip_r_flexion;
+            stance_hip_adduction = Biped::hip_r_adduction;
+
+            stanceFoot = &m_biped.getBody(Biped::foot_r);
+            stanceThigh = &m_biped.getBody(Biped::thigh_r);
+        }
+        else SimTK_THROW(Exception::Base);
+
+        // Preliminary quantities
+        // ======================
+        const SimbodyMatterSubsystem& matter = m_biped.getMatterSubsystem();
+
+        // Translation-related quantities.
+        // -------------------------------
+
+        // Whole-body mass center, expressed in ground.
+        const Vec3 massCenterLoc = matter.calcSystemMassCenterLocationInGround(s);
+        // This is 'v' in Yin, 2007.
+        const Vec3 massCenterVel = matter.calcSystemMassCenterVelocityInGround(s);
+
+        // Ankle, expressed in ground.
+        const Transform& X = stanceFoot->getInboardFrame(s);
+        Vec3 stanceAnkleLocInParent = X.p();
+        Vec3 stanceAnkleLoc = stanceFoot->getParentMobilizedBody()
+            .findStationLocationInGround(s, stanceAnkleLocInParent);
+
+        // Displacement of whole-body COM from ankle, expressed in ground.
+        // This is called 'd' in Yin, 2007.
+        Vec3 massCenterLocFromStanceAnkle = massCenterLoc - stanceAnkleLoc;
+
+        // Normals to the sagittal and coronal planes.
+        UnitVec3 sagittalNormal = m_biped.getNormalToSagittalPlane(s);
+        UnitVec3 coronalNormal = m_biped.getNormalToCoronalPlane(s);
+
+        // Projection of 'd' and 'v' into the forward / sagittal and lateral /
+        // coronal planes.  We apply balance control separately for these two
+        // planes.
+        Real massCenterLocFromStanceAnkleForwardMeasure =
+            dot(coronalNormal, massCenterLocFromStanceAnkle);
+        Real massCenterVelFromStanceAnkleForwardMeasure =
+            dot(coronalNormal, massCenterVel);
+        Real massCenterLocFromStanceAnkleLateralMeasure =
+            dot(sagittalNormal, massCenterLocFromStanceAnkle);
+        Real massCenterVelFromStanceAnkleLateralMeasure =
+            dot(sagittalNormal, massCenterVel);
+
+        // Rotation-related quantities.
+        // ----------------------------
+        // Hip flexion and adduction.
+        // TODO UnitVec3 stanceThighAxialDir = stanceThigh->getBodyRotation(s).y();
+        Vec3 upThigh = stanceThigh->getBodyRotation(s).y();
+        Vec3 XinSag = cross(UnitVec3(YAxis), sagittalNormal);
+        Vec3 projUpThigh = upThigh - dot(upThigh, sagittalNormal) * sagittalNormal;
+        // TODO points distally proximally?
+        Real globalStanceHipFlexionAngle = acos(dot(projUpThigh.normalize(), XinSag)) - Pi/2;
+        Real globalStanceHipFlexionRate = stanceThigh->expressGroundVectorInBodyFrame(s,
+                stanceThigh->getBodyAngularVelocity(s))[ZAxis];
+
+        // Trunk extension.
+        const MobilizedBody* trunk = &m_biped.getBody(Biped::trunk);
+        // Directed distally.
+        UnitVec3 trunkAxialDir = m_biped.getBody(Biped::trunk).getBodyRotation(s).y();
+        UnitVec3 upPelvis = m_biped.getBody(Biped::pelvis).getBodyRotation(s).y();
+        Vec3 projUpPelvis = upPelvis - dot(upPelvis, sagittalNormal) * sagittalNormal;
+        // UnitVec3(YAxis) gives a vector perpendicular to ground, directed up.
+        Real globalTrunkExtensionAngle = acos(dot(projUpPelvis.normalize(), XinSag)) * Pi/2;
+        Real globalTrunkExtensionRate = trunk->expressGroundVectorInBodyFrame(s,
+                trunk->getBodyAngularVelocity(s))[ZAxis];
+    }
 
     m_global_angles_file << s.getTime() << " " << _curSWTAngle[0] << " " << _curSWTAngle[1] << " " << _curTrunkAngle[0] << " " << _curTrunkAngle[1] << endl;
 
