@@ -354,7 +354,7 @@ SIMBICON::SIMBICON(Biped& biped,
 {
     // TODO
     m_global_angles_file.open("global_angles.txt");
-    m_global_angles_file << "time swtangle0 swtangle1 trunkangle0 trunkangle1" << endl;
+    m_global_angles_file << "time swtangle0 swtangle1 trunkangle0 trunkangle1 stanceHipFlexion TrunkExtension" << endl;
     m_proportionalGains[generic] = 300;
     m_proportionalGains[neck] = 100;
     m_proportionalGains[back] = 300;
@@ -701,7 +701,11 @@ computeSecondaryStateVals(const State& s, Real lForce, Real rForce) {
         Vec3 projUpThighCor = upThigh - dot(upThigh, corN)*corN;
         _curSWTAngle[1] =
             acos(dot(projUpThighCor.normalize(), ZinCor)) - Pi/2;
+
     }
+
+    Real globalStanceHipFlexionAngle = 0;
+    Real globalTrunkExtensionAngle = 0;
 
     if (simbiconState != UNKNOWN) {
 
@@ -785,7 +789,7 @@ computeSecondaryStateVals(const State& s, Real lForce, Real rForce) {
         Vec3 XinSag = cross(UnitVec3(YAxis), sagittalNormal);
         Vec3 projUpThigh = upThigh - dot(upThigh, sagittalNormal) * sagittalNormal;
         // TODO points distally proximally?
-        Real globalStanceHipFlexionAngle = acos(dot(projUpThigh.normalize(), XinSag)) - Pi/2;
+        globalStanceHipFlexionAngle = acos(dot(projUpThigh.normalize(), XinSag)) - Pi/2;
         Real globalStanceHipFlexionRate = stanceThigh->expressGroundVectorInBodyFrame(s,
                 stanceThigh->getBodyAngularVelocity(s))[ZAxis];
 
@@ -796,12 +800,12 @@ computeSecondaryStateVals(const State& s, Real lForce, Real rForce) {
         UnitVec3 upPelvis = m_biped.getBody(Biped::pelvis).getBodyRotation(s).y();
         Vec3 projUpPelvis = upPelvis - dot(upPelvis, sagittalNormal) * sagittalNormal;
         // UnitVec3(YAxis) gives a vector perpendicular to ground, directed up.
-        Real globalTrunkExtensionAngle = acos(dot(projUpPelvis.normalize(), XinSag)) * Pi/2;
+        globalTrunkExtensionAngle = acos(dot(projUpPelvis.normalize(), XinSag)) * Pi/2;
         Real globalTrunkExtensionRate = trunk->expressGroundVectorInBodyFrame(s,
                 trunk->getBodyAngularVelocity(s))[ZAxis];
     }
 
-    m_global_angles_file << s.getTime() << " " << _curSWTAngle[0] << " " << _curSWTAngle[1] << " " << _curTrunkAngle[0] << " " << _curTrunkAngle[1] << endl;
+    m_global_angles_file << s.getTime() << " " << _curSWTAngle[0] << " " << _curSWTAngle[1] << " " << _curTrunkAngle[0] << " " << _curTrunkAngle[1] << " " << globalStanceHipFlexionAngle << " " << globalTrunkExtensionAngle << endl;
 
 }
 
