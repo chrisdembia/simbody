@@ -334,9 +334,9 @@ private:
     };
 
     /// Global angles calculated in the most recent call to updateGlobalAngles.
-    GlobalAngles currentGlobalAngles;
+    GlobalAngles m_currentGlobalAngles;
     /// Global angles from the prevoius call to updateGlobalAngles.
-    GlobalAngles previousGlobalAngles;
+    GlobalAngles m_previousGlobalAngles;
 
     // TODO
     friend SimbiconStateHandler;
@@ -409,8 +409,8 @@ SIMBICON::SIMBICON(Biped& biped,
             m_proportionalGains[toe]);
 
         // TODO
-    currentGlobalAngles.reset();
-    previousGlobalAngles.reset();
+    m_currentGlobalAngles.reset();
+    m_previousGlobalAngles.reset();
 
 }
 
@@ -512,19 +512,33 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
 	double cd = 0.2; // global tipping feedback m_cd[stateIdx] TODO
 	double cv = m_cv[stateIdx];
 
+    // TODO
+	// Check there's a valid value for the previous angles.
+	// Otherwise just use 0 for the angular rates.
 	double trunkAngleVelEst[2] = {0, 0};
 	double SWTAngleVelEst[2] = {0, 0};
-	if (_lastTrunkAngle[0] > -100) {
-		// check there's a valid value for the _last*,
-		// otherwise just use 0 for vel
-		for (int i = 0; i < 2; i++) {
-			trunkAngleVelEst[i] =
-				(_curTrunkAngle[i] - _lastTrunkAngle[i])/STATE_UPD_STEPSIZE;
-			if (_lastSWTAngle[i] > -100) {
-				SWTAngleVelEst[i] =
-					(_curSWTAngle[i] - _lastSWTAngle[i])/STATE_UPD_STEPSIZE;
-			}
-		}
+
+    double swingHipFlexionRate = 0;
+    double swingHipAbductionRate = 0;
+    double trunkExtensionRate = 0;
+    double trunkBendingRate = 0;
+
+    // TODO
+    const GlobalAngles& cur = m_currentGlobalAngles;
+    const GlobalAngles& prev = m_previousGlobalAngles;
+	if (prev.trunkExtension > -100) {
+        if (prev.swingHipFlexion > -100) {
+        swingHipFlexionRate =
+            (cur.swingHipFlexion - prev.swingHipFlexion) / STATE_UPD_STEPSIZE;
+        }
+        if (prev.swingHipAbduction > -100) {
+            swingHipAbductionRate =
+                (cur.swingHipAbduction - prev.swingHipAbduction) / STATE_UPD_STEPSIZE;
+        }
+        trunkExtensionRate =
+            (cur.trunkExtension - prev.trunkExtension) / STATE_UPD_STEPSIZE;
+        trunkBendingRate =
+            (cur.trunkBending - prev.trunkBending) / STATE_UPD_STEPSIZE;
 	}
 
 
@@ -533,17 +547,17 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
     if (simbiconState == STATE0 || simbiconState == STATE1) // left stance
 		sign = -1;
 
-	controls[swh] = clamp(  kp*(thetad + (cd*d_sag + cv*v_sag) - _curSWTAngle[0])
-                          - kd*SWTAngleVelEst[0], kp);
-	controls[swhc] = sign*(clamp(  kp*(0.0 + (cd*d_cor + cv*v_cor) - _curSWTAngle[1])
-                                 - kd*SWTAngleVelEst[1], kp));
+	controls[swh] = clamp(  kp*(thetad + (cd*d_sag + cv*v_sag) - cur.swingHipFlexion)
+                          - kd*swingHipFlexionRate, kp);
+	controls[swhc] = sign*(clamp(  kp*(0.0 + (cd*d_cor + cv*v_cor) - cur.swingHipAbduction)
+                                 - kd*swingHipAbductionRate, kp));
 
 	// use stance hip to control the trunk
-	controls[sth] =  -kp*(0. - _curTrunkAngle[0]) + kd*trunkAngleVelEst[0];
+	controls[sth] =  -kp*(0. - cur.trunkExtension) + kd*trunkExtensionRate;
 	controls[sth] -= controls[swh];
 	controls[sth] = clamp(controls[sth], kp);
 
-	controls[sthc] = sign*(kp*(0. - _curTrunkAngle[1]) - kd*trunkAngleVelEst[1]);
+	controls[sthc] = sign*(kp*(0. - cur.trunkBending) - kd*trunkBendingRate);
 	controls[sthc] -= controls[swhc];
 	controls[sthc] = clamp(controls[sthc], kp);
 
@@ -695,29 +709,28 @@ updateGlobalAngles(const State& s) {
         Vec3 XinSag = cross(UnitY, sagN);
         Vec3 ZinCor = -cross(UnitY, corN);
 
+        GlobalAngles& cur = m_currentGlobalAngles;
+
         // Store the current value, use these for velocity estimation
-        for (int i = 0; i < 2; i++) {
-            _lastSWTAngle[i] = _curSWTAngle[i];
-            _lastTrunkAngle[i] = _curTrunkAngle[i];
-        }
+        m_previousGlobalAngles = cur;
 
         // Update trunk and swing thigh global orientations in the saggital and
         // coronal planes (by projecting the up vectors of the bodies in to the
         // planes and calculate angles)
         Vec3 projUpThigh = upThigh - dot(upThigh, sagN)*sagN;
-        _curSWTAngle[0] =
+        cur.swingHipFlexion =
             acos(dot(projUpThigh.normalize(), XinSag)) - Pi/2;
 
         Vec3 projUpPelvis = upPelvis - dot(upPelvis, sagN)*sagN;
-        _curTrunkAngle[0] =
+        cur.trunkExtension =
             acos(dot(projUpPelvis.normalize(), XinSag)) - Pi/2;
 
         Vec3 projUpPelvisCor = upPelvis - dot(upPelvis, corN)*corN;
-        _curTrunkAngle[1] =
+        cur.trunkBending =
             acos(dot(projUpPelvisCor.normalize(), ZinCor)) - Pi/2;
 
         Vec3 projUpThighCor = upThigh - dot(upThigh, corN)*corN;
-        _curSWTAngle[1] =
+        cur.swingHipAbduction =
             acos(dot(projUpThighCor.normalize(), ZinCor)) - Pi/2;
 
     }
@@ -828,7 +841,8 @@ updateGlobalAngles(const State& s) {
             acos(dot(coronalPelvisAxialDir, coronalHorizontal)) - Pi/2;
     }
 
-    m_global_angles_file << s.getTime() << " " << _curSWTAngle[0] << " " << _curSWTAngle[1] << " " << _curTrunkAngle[0] << " " << _curTrunkAngle[1] << " " << globalSwingHipFlexionAngle << " " << globalSwingHipAbductionAngle << " " << globalTrunkExtensionAngle << " " << globalTrunkBendingAngle << endl;
+    GlobalAngles& cur = m_currentGlobalAngles;
+    m_global_angles_file << s.getTime() << " " << cur.swingHipFlexion << " " << cur.swingHipAbduction << " " << cur.trunkExtension << " " << cur.trunkBending << " " << globalSwingHipFlexionAngle << " " << globalSwingHipAbductionAngle << " " << globalTrunkExtensionAngle << " " << globalTrunkBendingAngle << endl;
 
 }
 
