@@ -69,6 +69,9 @@ const char* coordinate_strings[] = {
 /// The MultibodySystem that we will control with the SIMBICON controller
 /// This system is independent of the controller, and could conceivably
 /// be controlled by a different controller.
+/// x is the forward direction (the direction in which the biped walks)
+/// y is up
+/// z is to the Biped's right.
 class Biped : public MultibodySystem {
 public:
     Biped();

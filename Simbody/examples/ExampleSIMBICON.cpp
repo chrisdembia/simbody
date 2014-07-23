@@ -655,6 +655,12 @@ void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForc
 #endif
 }
 
+Vec3 projectionOntoPlane(const Vec3& vectorToProject, const UnitVec3&
+        normalToPlane)
+{
+    return vectorToProject - dot(vectorToProject, normalToPlane), normalToPlane;
+}
+
 void SIMBICON::
 computeSecondaryStateVals(const State& s, Real lForce, Real rForce) {
 	const MobilizedBody& pelvis = m_biped.getBody(Biped::pelvis);
@@ -704,7 +710,7 @@ computeSecondaryStateVals(const State& s, Real lForce, Real rForce) {
 
     }
 
-    Real globalStanceHipFlexionAngle = 0;
+    Real globalSwingHipFlexionAngle = 0;
     Real globalTrunkExtensionAngle = 0;
 
     if (simbiconState != UNKNOWN) {
@@ -740,17 +746,22 @@ computeSecondaryStateVals(const State& s, Real lForce, Real rForce) {
         // Normals to the sagittal and coronal planes.
         UnitVec3 sagittalNormal = m_biped.getNormalToSagittalPlane(s);
         UnitVec3 coronalNormal = m_biped.getNormalToCoronalPlane(s);
+        // UnitVec3(YAxis) gives a vector perpendicular to ground, directed up.
+        // This vector is in sagittal plane, and is horizontal (parallel to the
+        // ground).
+        Vec3 sagittalHorizontal = cross(UnitVec3(YAxis), sagittalNormal);
 
         // Rotation-related quantities.
         // ----------------------------
         // Hip flexion and adduction.
-        Vec3 upThigh = swingThigh->getBodyRotation(s).y();
-        // UnitVec3(YAxis) gives a vector perpendicular to ground, directed up.
-        Vec3 XinSag = cross(UnitVec3(YAxis), sagittalNormal);
-        Vec3 projUpThigh = upThigh - dot(upThigh, sagittalNormal) * sagittalNormal;
+        // This vector is along the axis of the thigh, with an upward sense.
+        Vec3 swingThighAxialDir = swingThigh->getBodyRotation(s).y();
+        // Projection of the swingThighAxialDir into the sagittal plane.
+        UnitVec3 sagittalSwingThighAxialDir(
+                projectionOntoPlane(swingThighAxialDir, sagittalNormal));
         // TODO points distally proximally?
-        globalStanceHipFlexionAngle =
-            acos(dot(projUpThigh.normalize(), XinSag)) - Pi/2;
+        globalSwingHipFlexionAngle =
+            acos(dot(sagittalSwingThighAxialDir, UnitVec3(YAxis)));
 
         // Trunk extension.
         const MobilizedBody* trunk = &m_biped.getBody(Biped::trunk);
@@ -758,12 +769,10 @@ computeSecondaryStateVals(const State& s, Real lForce, Real rForce) {
         UnitVec3 trunkAxialDir = m_biped.getBody(Biped::trunk).getBodyRotation(s).y();
         UnitVec3 upPelvis = m_biped.getBody(Biped::pelvis).getBodyRotation(s).y();
         Vec3 projUpPelvis = upPelvis - dot(upPelvis, sagittalNormal) * sagittalNormal;
-        globalTrunkExtensionAngle = acos(dot(projUpPelvis.normalize(), XinSag)) - Pi/2;
-        Real globalTrunkExtensionRate = trunk->expressGroundVectorInBodyFrame(s,
-                trunk->getBodyAngularVelocity(s))[ZAxis];
+        globalTrunkExtensionAngle = acos(dot(projUpPelvis.normalize(), sagittalHorizontal)) - Pi/2;
     }
 
-    m_global_angles_file << s.getTime() << " " << _curSWTAngle[0] << " " << _curSWTAngle[1] << " " << _curTrunkAngle[0] << " " << _curTrunkAngle[1] << " " << globalStanceHipFlexionAngle << " " << globalTrunkExtensionAngle << endl;
+    m_global_angles_file << s.getTime() << " " << _curSWTAngle[0] << " " << _curSWTAngle[1] << " " << _curTrunkAngle[0] << " " << _curTrunkAngle[1] << " " << globalSwingHipFlexionAngle << " " << globalTrunkExtensionAngle << endl;
 
 }
 
