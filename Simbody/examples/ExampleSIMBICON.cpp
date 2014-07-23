@@ -195,8 +195,7 @@ public:
     };
 
     // TODO
-	void computeSecondaryStateVals(const SimTK::State& s,
-        SimTK::Real lForce, SimTK::Real rForce);
+	void updateGlobalAngles(const SimTK::State& s);
 
 private:
 
@@ -302,11 +301,12 @@ private:
     //index.
     DiscreteVariableIndex m_simbiconStateIndex;
 
-    // We set the value of the SIMBICON state using this index.
+    /// We set the value of the SIMBICON state using this index.
     CacheEntryIndex m_simbiconStateCacheIndex;
 
     void computeControls(const State& s, Vector& controls, Vector& mobForces) const;
 
+    // TODO get rid of this.
 	void getSagCorNormals( const SimTK::State& s,
 		SimTK::Vec3& sagN, SimTK::Vec3& corN ) const;
 	void getUpVectorInGround( const SimTK::State& s, const SimTK::MobilizedBody& b,
@@ -316,11 +316,29 @@ private:
 	void fillInHipJointControls( const SimTK::State& s,
 		SimTK::Vector& controls ) const;
 
-	double _lastSWTAngle[2];
-	double _curSWTAngle[2];
-	double _lastTrunkAngle[2];
-	double _curTrunkAngle[2];
+    /// Angles used for balance control. These angles describe the orientation
+    /// of parts of the Biped relative to the sagittal and coronal planes.
+    struct GlobalAngles
+    {
+        // TODO
+        Real swingHipFlexion;
+        Real swingHipAbduction;
+        Real trunkExtension;
+        Real trunkBending;
+        void reset() {
+            swingHipFlexion = -100;
+            swingHipAbduction = -100;
+            trunkExtension = -100;
+            trunkBending = -100;
+        }
+    };
 
+    /// Global angles calculated in the most recent call to updateGlobalAngles.
+    GlobalAngles currentGlobalAngles;
+    /// Global angles from the prevoius call to updateGlobalAngles.
+    GlobalAngles previousGlobalAngles;
+
+    // TODO
     friend SimbiconStateHandler;
 
     // TODO
@@ -391,12 +409,8 @@ SIMBICON::SIMBICON(Biped& biped,
             m_proportionalGains[toe]);
 
         // TODO
-	for (int i = 0; i < 2; i++) {
-		_lastSWTAngle[i] = -100.0;
-		_curSWTAngle[i] = -100.0;
-		_lastTrunkAngle[i] = -100.0;
-		_curTrunkAngle[i] = -100.0;
-	}
+    currentGlobalAngles.reset();
+    previousGlobalAngles.reset();
 
 }
 
@@ -660,7 +674,7 @@ Vec3 projectionOntoPlane(const Vec3& vecToProject,
 { return vecToProject - dot(vecToProject, normalToPlane) * normalToPlane; }
 
 void SIMBICON::
-computeSecondaryStateVals(const State& s, Real lForce, Real rForce) {
+updateGlobalAngles(const State& s) {
 	const MobilizedBody& pelvis = m_biped.getBody(Biped::pelvis);
 	const SIMBICONState simbiconState = getSIMBICONState(s);
 
@@ -799,7 +813,7 @@ computeSecondaryStateVals(const State& s, Real lForce, Real rForce) {
         UnitVec3 sagittalPelvisAxialDir(
                 projectionOntoPlane(pelvisAxialDir, sagittalNormal));
 
-        // Angle between the pelvis axis and the vertical, in the coronal plane.
+        // Angle between pelvis axis and the vertical, in the sagittal plane.
         globalTrunkExtensionAngle =
             acos(dot(sagittalPelvisAxialDir, sagittalHorizontal)) - Pi/2;
 
@@ -809,8 +823,9 @@ computeSecondaryStateVals(const State& s, Real lForce, Real rForce) {
         UnitVec3 coronalPelvisAxialDir(
                 projectionOntoPlane(pelvisAxialDir, coronalNormal));
 
+        // Angle between the pelvis axis and the vertical, in the coronal plane.
         globalTrunkBendingAngle =
-            acos(dot(sagittalPelvisAxialDir, coronalHorizontal)) - Pi/2;
+            acos(dot(coronalPelvisAxialDir, coronalHorizontal)) - Pi/2;
     }
 
     m_global_angles_file << s.getTime() << " " << _curSWTAngle[0] << " " << _curSWTAngle[1] << " " << _curTrunkAngle[0] << " " << _curTrunkAngle[1] << " " << globalSwingHipFlexionAngle << " " << globalSwingHipAbductionAngle << " " << globalTrunkExtensionAngle << " " << globalTrunkBendingAngle << endl;
@@ -933,9 +948,6 @@ void SIMBICON::updateSIMBICONState(const State& s) const
             break;
     }
 
-    // TODO const cast.
-    // TODO const_cast<SIMBICON*>(this)->computeSecondaryStateVals(s, lForce, rForce);
-
 #endif
 }
 
@@ -947,16 +959,9 @@ SimbiconStateHandler::SimbiconStateHandler(Biped& model, SIMBICON& simctrl,
 void SimbiconStateHandler::handleEvent(State& s, Real accuracy, bool& shouldTerminate) const
 {
     shouldTerminate = false;
-	SIMBICON* simctrl = &_simctrl;
-
-// TODO    _model.realize(s, Stage::Dynamics);
-
-    Real lForce, rForce;
-    _model.findContactForces(s, lForce, rForce);
-
 
 #ifndef DROP_LANDING
-    simctrl->computeSecondaryStateVals(s, lForce, rForce);
+    _simctrl.updateGlobalAngles(s);
 #endif
 }
 
