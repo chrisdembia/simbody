@@ -711,37 +711,24 @@ computeSecondaryStateVals(const State& s, Real lForce, Real rForce) {
 
         // Which leg is in stance, etc.?
         // =============================
-        Biped::Coordinate swing_hip_flexion;
         Biped::Coordinate swing_hip_adduction;
-        Biped::Coordinate stance_hip_flexion;
         Biped::Coordinate stance_hip_adduction;
         const MobilizedBody* stanceFoot;
-        const MobilizedBody* stanceThigh;
         const MobilizedBody* swingThigh;
         if (simbiconState == STATE0 || simbiconState == STATE1)
         {
             // Left leg is in stance.
-            swing_hip_flexion = Biped::hip_r_flexion;
             swing_hip_adduction = Biped::hip_r_adduction;
-
-            stance_hip_flexion = Biped::hip_l_flexion;
             stance_hip_adduction = Biped::hip_r_adduction;
-
             stanceFoot = &m_biped.getBody(Biped::foot_l);
-            stanceThigh = &m_biped.getBody(Biped::thigh_l);
             swingThigh = &m_biped.getBody(Biped::thigh_r);
         }
         else if (simbiconState == STATE2 || simbiconState == STATE3)
         {
             // Right leg is in stance.
-            swing_hip_flexion = Biped::hip_l_flexion;
             swing_hip_adduction = Biped::hip_l_adduction;
-
-            stance_hip_flexion = Biped::hip_r_flexion;
             stance_hip_adduction = Biped::hip_r_adduction;
-
             stanceFoot = &m_biped.getBody(Biped::foot_r);
-            stanceThigh = &m_biped.getBody(Biped::thigh_r);
             swingThigh = &m_biped.getBody(Biped::thigh_l);
         }
         else SimTK_THROW(Exception::Base);
@@ -757,7 +744,6 @@ computeSecondaryStateVals(const State& s, Real lForce, Real rForce) {
         // Rotation-related quantities.
         // ----------------------------
         // Hip flexion and adduction.
-        // TODO UnitVec3 stanceThighAxialDir = stanceThigh->getBodyRotation(s).y();
         Vec3 upThigh = swingThigh->getBodyRotation(s).y();
         // UnitVec3(YAxis) gives a vector perpendicular to ground, directed up.
         Vec3 XinSag = cross(UnitVec3(YAxis), sagittalNormal);
@@ -765,9 +751,6 @@ computeSecondaryStateVals(const State& s, Real lForce, Real rForce) {
         // TODO points distally proximally?
         globalStanceHipFlexionAngle =
             acos(dot(projUpThigh.normalize(), XinSag)) - Pi/2;
-        Real globalStanceHipFlexionRate =
-            stanceThigh->expressGroundVectorInBodyFrame(s,
-                    stanceThigh->getBodyAngularVelocity(s))[ZAxis];
 
         // Trunk extension.
         const MobilizedBody* trunk = &m_biped.getBody(Biped::trunk);
