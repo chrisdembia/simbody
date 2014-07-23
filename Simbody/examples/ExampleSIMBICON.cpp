@@ -688,162 +688,116 @@ Vec3 projectionOntoPlane(const Vec3& vecToProject,
 { return vecToProject - dot(vecToProject, normalToPlane) * normalToPlane; }
 
 void SIMBICON::
-updateGlobalAngles(const State& s) {
-	const MobilizedBody& pelvis = m_biped.getBody(Biped::pelvis);
+updateGlobalAngles(const State& s)
+{
 	const SIMBICONState simbiconState = getSIMBICONState(s);
 
-    {
-
-        Vec3 upThigh;
-        if (simbiconState == STATE0 || simbiconState == STATE1)
-            getUpVectorInGround(s, m_biped.getBody(Biped::thigh_r), upThigh);
-        else if (simbiconState == STATE2 || simbiconState == STATE3)
-            getUpVectorInGround(s, m_biped.getBody(Biped::thigh_l), upThigh);
-
-        Vec3 upPelvis;
-        getUpVectorInGround(s, pelvis, upPelvis);
-
-        Vec3 sagN, corN;
-        getSagCorNormals(s, sagN, corN);
-
-        Vec3 XinSag = cross(UnitY, sagN);
-        Vec3 ZinCor = -cross(UnitY, corN);
-
-        GlobalAngles& cur = m_currentGlobalAngles;
-
-        // Store the current value, use these for velocity estimation
-        m_previousGlobalAngles = cur;
-
-        // Update trunk and swing thigh global orientations in the saggital and
-        // coronal planes (by projecting the up vectors of the bodies in to the
-        // planes and calculate angles)
-        Vec3 projUpThigh = upThigh - dot(upThigh, sagN)*sagN;
-        cur.swingHipFlexion =
-            acos(dot(projUpThigh.normalize(), XinSag)) - Pi/2;
-
-        Vec3 projUpPelvis = upPelvis - dot(upPelvis, sagN)*sagN;
-        cur.trunkExtension =
-            acos(dot(projUpPelvis.normalize(), XinSag)) - Pi/2;
-
-        Vec3 projUpPelvisCor = upPelvis - dot(upPelvis, corN)*corN;
-        cur.trunkBending =
-            acos(dot(projUpPelvisCor.normalize(), ZinCor)) - Pi/2;
-
-        Vec3 projUpThighCor = upThigh - dot(upThigh, corN)*corN;
-        cur.swingHipAbduction =
-            acos(dot(projUpThighCor.normalize(), ZinCor)) - Pi/2;
-
-    }
-
-    Real globalSwingHipFlexionAngle = 0;
-    Real globalSwingHipAbductionAngle = 0;
-    Real globalTrunkExtensionAngle = 0;
-    Real globalTrunkBendingAngle = 0;
-
-    if (simbiconState != UNKNOWN) {
-
-        // Which leg is in stance, etc.?
-        // =============================
-        const MobilizedBody* stanceFoot;
-        const MobilizedBody* swingThigh;
-        if (simbiconState == STATE0 || simbiconState == STATE1)
-        {
-            // Left leg is in stance.
-            stanceFoot = &m_biped.getBody(Biped::foot_l);
-            swingThigh = &m_biped.getBody(Biped::thigh_r);
-        }
-        else if (simbiconState == STATE2 || simbiconState == STATE3)
-        {
-            // Right leg is in stance.
-            stanceFoot = &m_biped.getBody(Biped::foot_r);
-            swingThigh = &m_biped.getBody(Biped::thigh_l);
-        }
-        else SimTK_THROW(Exception::Base);
-
-        // Preliminary quantities.
-        // =======================
-        const SimbodyMatterSubsystem& matter = m_biped.getMatterSubsystem();
-
-        // Normals to the sagittal and coronal planes.
-        UnitVec3 sagittalNormal = m_biped.getNormalToSagittalPlane(s);
-        UnitVec3 coronalNormal = m_biped.getNormalToCoronalPlane(s);
-
-        // UnitVec3(YAxis) gives a vector perpendicular to ground, directed up.
-        UnitVec3 up(YAxis);
-
-        // This vector is in sagittal plane, and is parallel to the ground.
-        UnitVec3 sagittalHorizontal(cross(up, sagittalNormal));
-
-        // A horizontal vector in the coronal plane, directed to the 'right'.
-        UnitVec3 coronalHorizontal(-cross(up, coronalNormal));
-
-        // Rotation-related quantities.
-        // ============================
-
-        // Global hip angles.
-        // ------------------
-        // This vector is along the axis of the thigh, directed proximally.
-        UnitVec3 swingThighAxialDir(swingThigh->getBodyRotation(s).y());
-
-        // Hip flexion.
-        // ````````````
-        // Take the vector directed along the hip, project it into the sagittal
-        // plane, and get the angle between that and the horizontal.
-
-        // Projection of the swingThighAxialDir into the sagittal plane.
-        UnitVec3 sagittalSwingThighAxialDir(
-            projectionOntoPlane(swingThighAxialDir, sagittalNormal));
-
-        // Angle between the thigh axis and the vertical, but done so in a way
-        // that the angle is negative if the thigh axis is directed anteriorly.
-        globalSwingHipFlexionAngle =
-            acos(dot(sagittalSwingThighAxialDir, sagittalHorizontal)) - Pi / 2;
-
-        // Hip abduction.
-        // ``````````````
-        // Projection of the swingThighAxialDir into the coronal plane.
-        UnitVec3 coronalSwingThighAxialDir(
-                projectionOntoPlane(swingThighAxialDir, coronalNormal));
-
-        // Angle between the thigh axis and the vertical, in the coronal plane.
-        globalSwingHipAbductionAngle =
-            acos(dot(coronalSwingThighAxialDir, coronalHorizontal)) - Pi / 2;
-        // TODO change sign for when left leg is in swing.
-
-        // Global trunk angles (well, actually, pelvis angles).
-        // ----------------------------------------------------
-        const MobilizedBody* pelvis = &m_biped.getBody(Biped::pelvis);
-
-        // Directed proximally.
-        UnitVec3 pelvisAxialDir(pelvis->getBodyRotation(s).y());
-
-        // Trunk extension (sagittal plane).
-        // `````````````````````````````````
-        // Take the vector directed up the pelvis, project it into the sagittal
-        // plane, and get the angle between that and the horizontal.
-
-        // Projection of the pelvisAxialDir into the sagittal plane.
-        UnitVec3 sagittalPelvisAxialDir(
-                projectionOntoPlane(pelvisAxialDir, sagittalNormal));
-
-        // Angle between pelvis axis and the vertical, in the sagittal plane.
-        globalTrunkExtensionAngle =
-            acos(dot(sagittalPelvisAxialDir, sagittalHorizontal)) - Pi/2;
-
-        // Trunk bending (coronal plane).
-        // ``````````````````````````````
-        // Projection of the pelvisAxialDir into the coronal plane.
-        UnitVec3 coronalPelvisAxialDir(
-                projectionOntoPlane(pelvisAxialDir, coronalNormal));
-
-        // Angle between the pelvis axis and the vertical, in the coronal plane.
-        globalTrunkBendingAngle =
-            acos(dot(coronalPelvisAxialDir, coronalHorizontal)) - Pi/2;
-    }
+    // Only compute angles if we have entered the state machine.
+    if (simbiconState == UNKNOWN) return;
 
     GlobalAngles& cur = m_currentGlobalAngles;
-    m_global_angles_file << s.getTime() << " " << cur.swingHipFlexion << " " << cur.swingHipAbduction << " " << cur.trunkExtension << " " << cur.trunkBending << " " << globalSwingHipFlexionAngle << " " << globalSwingHipAbductionAngle << " " << globalTrunkExtensionAngle << " " << globalTrunkBendingAngle << endl;
 
+    // Save the previous values; we use these to approximate derivatives.
+    m_previousGlobalAngles = cur;
+
+    // Which leg is in stance, etc.?
+    // =============================
+    const MobilizedBody* stanceFoot;
+    const MobilizedBody* swingThigh;
+    if (simbiconState == STATE0 || simbiconState == STATE1)
+    {
+        // Left leg is in stance.
+        stanceFoot = &m_biped.getBody(Biped::foot_l);
+        swingThigh = &m_biped.getBody(Biped::thigh_r);
+    }
+    else if (simbiconState == STATE2 || simbiconState == STATE3)
+    {
+        // Right leg is in stance.
+        stanceFoot = &m_biped.getBody(Biped::foot_r);
+        swingThigh = &m_biped.getBody(Biped::thigh_l);
+    }
+    else SimTK_THROW(Exception::Base);
+
+    // Preliminary quantities.
+    // =======================
+    const SimbodyMatterSubsystem& matter = m_biped.getMatterSubsystem();
+
+    // Normals to the sagittal and coronal planes.
+    UnitVec3 sagittalNormal = m_biped.getNormalToSagittalPlane(s);
+    UnitVec3 coronalNormal = m_biped.getNormalToCoronalPlane(s);
+
+    // UnitVec3(YAxis) gives a vector perpendicular to ground, directed up.
+    UnitVec3 up(YAxis);
+
+    // This vector is in sagittal plane, and is parallel to the ground.
+    UnitVec3 sagittalHorizontal(cross(up, sagittalNormal));
+
+    // A horizontal vector in the coronal plane, directed to the 'right'.
+    UnitVec3 coronalHorizontal(-cross(up, coronalNormal));
+
+    // Rotation-related quantities.
+    // ============================
+
+    // Global hip angles.
+    // ------------------
+    // This vector is along the axis of the thigh, directed proximally.
+    UnitVec3 swingThighAxialDir(swingThigh->getBodyRotation(s).y());
+
+    // Hip flexion.
+    // ````````````
+    // Take the vector directed along the hip, project it into the sagittal
+    // plane, and get the angle between that and the horizontal.
+
+    // Projection of the swingThighAxialDir into the sagittal plane.
+    UnitVec3 sagittalSwingThighAxialDir(
+            projectionOntoPlane(swingThighAxialDir, sagittalNormal));
+
+    // Angle between the thigh axis and the vertical, but done so in a way
+    // that the angle is negative if the thigh axis is directed anteriorly.
+    cur.swingHipFlexion =
+        acos(dot(sagittalSwingThighAxialDir, sagittalHorizontal)) - Pi / 2;
+
+    // Hip abduction.
+    // ``````````````
+    // Projection of the swingThighAxialDir into the coronal plane.
+    UnitVec3 coronalSwingThighAxialDir(
+            projectionOntoPlane(swingThighAxialDir, coronalNormal));
+
+    // Angle between the thigh axis and the vertical, in the coronal plane.
+    cur.swingHipAbduction =
+        acos(dot(coronalSwingThighAxialDir, coronalHorizontal)) - Pi / 2;
+    // TODO change sign for when left leg is in swing.
+
+    // Global trunk angles (well, actually, pelvis angles).
+    // ----------------------------------------------------
+	const MobilizedBody& pelvis = m_biped.getBody(Biped::pelvis);
+
+    // Directed proximally.
+    UnitVec3 pelvisAxialDir(pelvis.getBodyRotation(s).y());
+
+    // Trunk extension (sagittal plane).
+    // `````````````````````````````````
+    // Take the vector directed up the pelvis, project it into the sagittal
+    // plane, and get the angle between that and the horizontal.
+
+    // Projection of the pelvisAxialDir into the sagittal plane.
+    UnitVec3 sagittalPelvisAxialDir(
+            projectionOntoPlane(pelvisAxialDir, sagittalNormal));
+
+    // Angle between pelvis axis and the vertical, in the sagittal plane.
+    // TODO move comments elsewhere
+    cur.trunkExtension =
+        acos(dot(sagittalPelvisAxialDir, sagittalHorizontal)) - Pi/2;
+
+    // Trunk bending (coronal plane).
+    // ``````````````````````````````
+    // Projection of the pelvisAxialDir into the coronal plane.
+    UnitVec3 coronalPelvisAxialDir(
+            projectionOntoPlane(pelvisAxialDir, coronalNormal));
+
+    // Angle between the pelvis axis and the vertical, in the coronal plane.
+    cur.trunkBending =
+        acos(dot(coronalPelvisAxialDir, coronalHorizontal)) - Pi/2;
 }
 
 /* TODO
