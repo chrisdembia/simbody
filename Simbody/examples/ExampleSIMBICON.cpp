@@ -61,7 +61,7 @@ double clamp( double x, double max) {
 
 // TODO remove
 const Real RealTimeFactor
-    = 1; // try to run in real time
+    = 0.5; // try to run in real time
 
 // TODO remove
 const int NumActuators = 30;
@@ -354,7 +354,7 @@ SIMBICON::SIMBICON(Biped& biped,
 {
     // TODO
     m_global_angles_file.open("global_angles.txt");
-    m_global_angles_file << "time swtangle0 swtangle1 trunkangle0 trunkangle1 stanceHipFlexion TrunkExtension" << endl;
+    m_global_angles_file << "time swtangle0 swtangle1 trunkangle0 trunkangle1 swingHipFlexion swingHipAbduction TrunkExtension TrunkBending" << endl;
     m_proportionalGains[generic] = 300;
     m_proportionalGains[neck] = 100;
     m_proportionalGains[back] = 300;
@@ -709,29 +709,25 @@ computeSecondaryStateVals(const State& s, Real lForce, Real rForce) {
     }
 
     Real globalSwingHipFlexionAngle = 0;
+    Real globalSwingHipAbductionAngle = 0;
     Real globalTrunkExtensionAngle = 0;
+    Real globalTrunkBendingAngle = 0;
 
     if (simbiconState != UNKNOWN) {
 
         // Which leg is in stance, etc.?
         // =============================
-        Biped::Coordinate swing_hip_adduction;
-        Biped::Coordinate stance_hip_adduction;
         const MobilizedBody* stanceFoot;
         const MobilizedBody* swingThigh;
         if (simbiconState == STATE0 || simbiconState == STATE1)
         {
             // Left leg is in stance.
-            swing_hip_adduction = Biped::hip_r_adduction;
-            stance_hip_adduction = Biped::hip_r_adduction;
             stanceFoot = &m_biped.getBody(Biped::foot_l);
             swingThigh = &m_biped.getBody(Biped::thigh_r);
         }
         else if (simbiconState == STATE2 || simbiconState == STATE3)
         {
             // Right leg is in stance.
-            swing_hip_adduction = Biped::hip_l_adduction;
-            stance_hip_adduction = Biped::hip_r_adduction;
             stanceFoot = &m_biped.getBody(Biped::foot_r);
             swingThigh = &m_biped.getBody(Biped::thigh_l);
         }
@@ -744,46 +740,80 @@ computeSecondaryStateVals(const State& s, Real lForce, Real rForce) {
         // Normals to the sagittal and coronal planes.
         UnitVec3 sagittalNormal = m_biped.getNormalToSagittalPlane(s);
         UnitVec3 coronalNormal = m_biped.getNormalToCoronalPlane(s);
+
         // UnitVec3(YAxis) gives a vector perpendicular to ground, directed up.
+        UnitVec3 up(YAxis);
+
         // This vector is in sagittal plane, and is parallel to the ground.
-        UnitVec3 sagittalHorizontal(cross(UnitVec3(YAxis), sagittalNormal));
+        UnitVec3 sagittalHorizontal(cross(up, sagittalNormal));
+
+        // A horizontal vector in the coronal plane, directed to the 'right'.
+        UnitVec3 coronalHorizontal(-cross(up, coronalNormal));
 
         // Rotation-related quantities.
         // ============================
-        // Hip flexion and adduction.
-        // --------------------------
-        // Get a vector directed along the hip, project it into the sagittal
-        // plane, and get the angle between that and the horizontal.
 
+        // Global hip angles.
+        // ------------------
         // This vector is along the axis of the thigh, directed proximally.
         UnitVec3 swingThighAxialDir(swingThigh->getBodyRotation(s).y());
+
+        // Hip flexion.
+        // ````````````
+        // Take the vector directed along the hip, project it into the sagittal
+        // plane, and get the angle between that and the horizontal.
 
         // Projection of the swingThighAxialDir into the sagittal plane.
         UnitVec3 sagittalSwingThighAxialDir(
             projectionOntoPlane(swingThighAxialDir, sagittalNormal));
 
-        // Dotting with the vertical loses sign information, so we dot with the
-        // horizontal and subtract off 90 degrees.
+        // Angle between the thigh axis and the vertical, but done so in a way
+        // that the angle is negative if the thigh axis is directed anteriorly.
         globalSwingHipFlexionAngle =
-            acos(dot(sagittalSwingThighAxialDir, sagittalHorizontal)) - Pi/2;
+            acos(dot(sagittalSwingThighAxialDir, sagittalHorizontal)) - Pi / 2;
 
-        // Trunk extension (well, actually pelvis extension).
-        // --------------------------------------------------
-        // Get a vector directed up the pelvis, project it into the sagittal
-        // plane, and get the angle between that and the horizontal.
+        // Hip abduction.
+        // ``````````````
+        // Projection of the swingThighAxialDir into the coronal plane.
+        UnitVec3 coronalSwingThighAxialDir(
+                projectionOntoPlane(swingThighAxialDir, coronalNormal));
+
+        // Angle between the thigh axis and the vertical, in the coronal plane.
+        globalSwingHipAbductionAngle =
+            acos(dot(coronalSwingThighAxialDir, coronalHorizontal)) - Pi / 2;
+        // TODO change sign for when left leg is in swing.
+
+        // Global trunk angles (well, actually, pelvis angles).
+        // ----------------------------------------------------
         const MobilizedBody* pelvis = &m_biped.getBody(Biped::pelvis);
 
         // Directed proximally.
         UnitVec3 pelvisAxialDir(pelvis->getBodyRotation(s).y());
 
+        // Trunk extension (sagittal plane).
+        // `````````````````````````````````
+        // Take the vector directed up the pelvis, project it into the sagittal
+        // plane, and get the angle between that and the horizontal.
+
         // Projection of the pelvisAxialDir into the sagittal plane.
         UnitVec3 sagittalPelvisAxialDir(
                 projectionOntoPlane(pelvisAxialDir, sagittalNormal));
+
+        // Angle between the pelvis axis and the vertical, in the coronal plane.
         globalTrunkExtensionAngle =
             acos(dot(sagittalPelvisAxialDir, sagittalHorizontal)) - Pi/2;
+
+        // Trunk bending (coronal plane).
+        // ``````````````````````````````
+        // Projection of the pelvisAxialDir into the coronal plane.
+        UnitVec3 coronalPelvisAxialDir(
+                projectionOntoPlane(pelvisAxialDir, coronalNormal));
+
+        globalTrunkBendingAngle =
+            acos(dot(sagittalPelvisAxialDir, coronalHorizontal)) - Pi/2;
     }
 
-    m_global_angles_file << s.getTime() << " " << _curSWTAngle[0] << " " << _curSWTAngle[1] << " " << _curTrunkAngle[0] << " " << _curTrunkAngle[1] << " " << globalSwingHipFlexionAngle << " " << globalTrunkExtensionAngle << endl;
+    m_global_angles_file << s.getTime() << " " << _curSWTAngle[0] << " " << _curSWTAngle[1] << " " << _curTrunkAngle[0] << " " << _curTrunkAngle[1] << " " << globalSwingHipFlexionAngle << " " << globalSwingHipAbductionAngle << " " << globalTrunkExtensionAngle << " " << globalTrunkBendingAngle << endl;
 
 }
 
