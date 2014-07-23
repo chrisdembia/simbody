@@ -116,7 +116,7 @@ public:
     /// The names of the rigid bodies that make up the biped.
     /// Used for indexing into data structures.
     enum Segment {
-        trunk, // called 'torso' in paper.
+        trunk,
         head,
         pelvis,
         upperarm_r, lowerarm_r, hand_r, upperarm_l, lowerarm_l, hand_l,

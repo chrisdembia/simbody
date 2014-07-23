@@ -655,11 +655,9 @@ void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForc
 #endif
 }
 
-Vec3 projectionOntoPlane(const Vec3& vectorToProject, const UnitVec3&
-        normalToPlane)
-{
-    return vectorToProject - dot(vectorToProject, normalToPlane), normalToPlane;
-}
+Vec3 projectionOntoPlane(const Vec3& vecToProject,
+                         const UnitVec3& normalToPlane)
+{ return vecToProject - dot(vecToProject, normalToPlane) * normalToPlane; }
 
 void SIMBICON::
 computeSecondaryStateVals(const State& s, Real lForce, Real rForce) {
@@ -739,37 +737,50 @@ computeSecondaryStateVals(const State& s, Real lForce, Real rForce) {
         }
         else SimTK_THROW(Exception::Base);
 
-        // Preliminary quantities
-        // ======================
+        // Preliminary quantities.
+        // =======================
         const SimbodyMatterSubsystem& matter = m_biped.getMatterSubsystem();
 
         // Normals to the sagittal and coronal planes.
         UnitVec3 sagittalNormal = m_biped.getNormalToSagittalPlane(s);
         UnitVec3 coronalNormal = m_biped.getNormalToCoronalPlane(s);
         // UnitVec3(YAxis) gives a vector perpendicular to ground, directed up.
-        // This vector is in sagittal plane, and is horizontal (parallel to the
-        // ground).
-        Vec3 sagittalHorizontal = cross(UnitVec3(YAxis), sagittalNormal);
+        // This vector is in sagittal plane, and is parallel to the ground.
+        UnitVec3 sagittalHorizontal(cross(UnitVec3(YAxis), sagittalNormal));
 
         // Rotation-related quantities.
-        // ----------------------------
+        // ============================
         // Hip flexion and adduction.
-        // This vector is along the axis of the thigh, with an upward sense.
-        Vec3 swingThighAxialDir = swingThigh->getBodyRotation(s).y();
+        // --------------------------
+        // Get a vector directed along the hip, project it into the sagittal
+        // plane, and get the angle between that and the horizontal.
+
+        // This vector is along the axis of the thigh, directed proximally.
+        UnitVec3 swingThighAxialDir(swingThigh->getBodyRotation(s).y());
+
         // Projection of the swingThighAxialDir into the sagittal plane.
         UnitVec3 sagittalSwingThighAxialDir(
-                projectionOntoPlane(swingThighAxialDir, sagittalNormal));
-        // TODO points distally proximally?
-        globalSwingHipFlexionAngle =
-            acos(dot(sagittalSwingThighAxialDir, UnitVec3(YAxis)));
+            projectionOntoPlane(swingThighAxialDir, sagittalNormal));
 
-        // Trunk extension.
-        const MobilizedBody* trunk = &m_biped.getBody(Biped::trunk);
-        // Directed distally.
-        UnitVec3 trunkAxialDir = m_biped.getBody(Biped::trunk).getBodyRotation(s).y();
-        UnitVec3 upPelvis = m_biped.getBody(Biped::pelvis).getBodyRotation(s).y();
-        Vec3 projUpPelvis = upPelvis - dot(upPelvis, sagittalNormal) * sagittalNormal;
-        globalTrunkExtensionAngle = acos(dot(projUpPelvis.normalize(), sagittalHorizontal)) - Pi/2;
+        // Dotting with the vertical loses sign information, so we dot with the
+        // horizontal and subtract off 90 degrees.
+        globalSwingHipFlexionAngle =
+            acos(dot(sagittalSwingThighAxialDir, sagittalHorizontal)) - Pi/2;
+
+        // Trunk extension (well, actually pelvis extension).
+        // --------------------------------------------------
+        // Get a vector directed up the pelvis, project it into the sagittal
+        // plane, and get the angle between that and the horizontal.
+        const MobilizedBody* pelvis = &m_biped.getBody(Biped::pelvis);
+
+        // Directed proximally.
+        UnitVec3 pelvisAxialDir(pelvis->getBodyRotation(s).y());
+
+        // Projection of the pelvisAxialDir into the sagittal plane.
+        UnitVec3 sagittalPelvisAxialDir(
+                projectionOntoPlane(pelvisAxialDir, sagittalNormal));
+        globalTrunkExtensionAngle =
+            acos(dot(sagittalPelvisAxialDir, sagittalHorizontal)) - Pi/2;
     }
 
     m_global_angles_file << s.getTime() << " " << _curSWTAngle[0] << " " << _curSWTAngle[1] << " " << _curTrunkAngle[0] << " " << _curTrunkAngle[1] << " " << globalSwingHipFlexionAngle << " " << globalTrunkExtensionAngle << endl;
