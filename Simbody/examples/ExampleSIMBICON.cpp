@@ -118,7 +118,7 @@ public:
 
     /// The possible states of the finite state machine.
     enum SIMBICONState {
-        UNKNOWN = -1, // initial state at the beginning of a simulation.
+        NOT_IN_STATE_MACHINE = -1, // initial state.
         STATE0 = 0, // Left stance.
         STATE1 = 1, // Right foot strike.
         STATE2 = 2, // Right stance.
@@ -149,7 +149,8 @@ public:
         // qualifier.
         const_cast<SIMBICON*>(this)->m_simbiconStateIndex =
             m_forces.allocateAutoUpdateDiscreteVariable(s,
-                    Stage::Acceleration, new Value<SIMBICONState>(UNKNOWN),
+                    Stage::Acceleration,
+                    new Value<SIMBICONState>(NOT_IN_STATE_MACHINE),
                     Stage::Dynamics);
 
         const_cast<SIMBICON*>(this)->m_simbiconStateCacheIndex =
@@ -613,7 +614,7 @@ void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForc
 
     // Which leg is in stance?
     // -----------------------
-    if (simbiconState != UNKNOWN)
+    if (simbiconState != NOT_IN_STATE_MACHINE)
     {
         Biped::Coordinate swing_knee_extension;
         Biped::Coordinate swing_ankle_dorsiflexion;
@@ -670,8 +671,8 @@ void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForc
         coordPDControl(s, Biped::ankle_r_dorsiflexion, ankle_flexion, 0.0, mobForces);
     }
 
-	if (simbiconState >= STATE0) {
-        // TODO change to UNKNOWN
+	if (simbiconState != NOT_IN_STATE_MACHINE) {
+        // TODO change to NOT_IN_STATE_MACHINE
 		fillInHipJointControls(s, controls);
     }
 
@@ -695,7 +696,7 @@ updateGlobalAngles(const State& s)
 	const SIMBICONState simbiconState = getSIMBICONState(s);
 
     // Only compute angles if we have entered the state machine.
-    if (simbiconState == UNKNOWN) return;
+    if (simbiconState == NOT_IN_STATE_MACHINE) return;
 
     GlobalAngles& cur = m_currentGlobalAngles;
 
@@ -858,7 +859,7 @@ void SIMBICON::updateSIMBICONState(const State& s) const
     switch (simbiconState)
     {
         // Neither foot has contacted the ground yet.
-        case UNKNOWN:
+        case NOT_IN_STATE_MACHINE:
 
             // Entering right stance.
             if (rContact) {
