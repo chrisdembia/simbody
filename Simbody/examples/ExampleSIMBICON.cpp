@@ -61,7 +61,7 @@ double clamp( double x, double max) {
 
 // TODO remove
 const Real RealTimeFactor
-    = 0.5; // try to run in real time
+    = 1.0; // try to run in real time
 
 // TODO remove
 const int NumActuators = 30;
