@@ -23,7 +23,14 @@
 
 // Use rigid contact instead of compliant contact. This macro is used in the
 // Biped header.
-// TODO #define RIGID_CONTACT
+#define RIGID_CONTACT
+
+#include "BipedSystem.h"
+#include <Simbody.h>
+
+#include <fstream>
+#include <cassert>
+#include <vector>
 
 // Normally SIMBICON has 4 states per gait cycle (i.e. 2 per leg), 2 state is
 // simplified and not as realistic.
@@ -33,14 +40,8 @@
 // the humanoid upon which the controller depends.
 //#define DROP_LANDING
 
+// How often should we trigger events to update global angle calculations?
 #define EVENT_PERIOD 0.0005
-
-#include "BipedSystem.h"
-#include <Simbody.h>
-
-#include <fstream>
-#include <cassert>
-#include <vector>
 
 using namespace std;
 using namespace SimTK;
@@ -1092,10 +1093,11 @@ iss >> orig;
         // Force::Custom takes ownership over simctrl.
         Force::Custom simbicon(biped.updForceSubsystem(), simctrl);
 
-        // TODO #ifndef RIGID_CONTACT
+        #ifndef RIGID_CONTACT
+        // TODO
         biped.addEventHandler(
                 new SimbiconStateHandler(biped, *simctrl, EVENT_PERIOD));
-        // TODO #endif
+        #endif
 
         // Initialize.
         State s;
