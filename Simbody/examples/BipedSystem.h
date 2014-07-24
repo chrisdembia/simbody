@@ -228,45 +228,11 @@ Biped::Biped()
     //--------------------------------------------------------------------------
     //                          Constants, etc.
     //--------------------------------------------------------------------------
+    // Contact parameters are elsewhere.
 
     // Properties of joint stops.
     const Real stopStiffness = DEG(1000); // N-m/deg -> N-m/radian
     const Real stopDissipation = 1;
-
-    // Contact parameters.
-    // -------------------
-    // slide -> stick velocity.
-    const Real transitionVelocity = .03;
-
-    // Friction coefficients.
-    const Real mu_s = 5;
-    const Real mu_d = 5;
-    const Real mu_v = 0;
-
-    // Contact spheres attached to feet.
-    const Real contactSphereRadius = 1.5 * .01;
-
-    // Contact material: rubber.
-    const Real rubber_density = 1100.;  // kg/m^3
-    const Real rubber_young   = 0.01e9; // pascals (N/m)
-    const Real rubber_poisson = 0.5;    // ratio
-    const Real rubber_planestrain =
-        ContactMaterial::calcPlaneStrainStiffness(rubber_young,rubber_poisson);
-    const Real rubber_dissipation = /*0.005*/1;
-
-    const ContactMaterial rubber(rubber_planestrain,rubber_dissipation,
-                                   mu_s,mu_d,mu_v);
-
-    // Contact material: concrete.
-    const Real concrete_density = 2300.;  // kg/m^3
-    const Real concrete_young   = 25e9;  // pascals (N/m)
-    const Real concrete_poisson = 0.15;    // ratio
-    const Real concrete_planestrain =
-        ContactMaterial::calcPlaneStrainStiffness(concrete_young,concrete_poisson);
-    const Real concrete_dissipation = 0.005;
-
-    const ContactMaterial concrete(concrete_planestrain,concrete_dissipation,
-                                   mu_s,mu_d,mu_v);
 
     // Miscellaneous.
     // --------------
@@ -287,17 +253,11 @@ Biped::Biped()
 
 
     //--------------------------------------------------------------------------
-    //                          Gravity and ground contact
+    //                          Gravity
     //--------------------------------------------------------------------------
 
     // Gravity.
     Force::Gravity(m_forces, m_matter, -YAxis, 9.8066);
-
-    // Contact with the ground.
-    m_matter.updGround().updBody().addContactSurface(
-            Transform(Rotation(-0.5 * Pi, ZAxis), Vec3(0)),
-            ContactSurface(ContactGeometry::HalfSpace(), concrete));
-
 
     //--------------------------------------------------------------------------
     //                          Body information
@@ -566,43 +526,98 @@ Biped::Biped()
     toes_lInfo.addDecoration(Vec3(0),originMarker);
 
     //--------------------------------------------------------------------------
-    //                         Contact at feet and toes
+    //                  Contact at feet and toes: Compliant
     //--------------------------------------------------------------------------
-    const Vec2 rlatmed(.04,-.04);
-    const Vec2 heelball(-.02,.125);
+#ifndef RIGID_CONTACT
+
+    // Parameters.
+    // -----------
+    // slide -> stick velocity.
+    // TODO unused. const Real transitionVelocity = .03; 
+
+    // Contact spheres attached to feet.
+    const Real contactSphereRadius = 1.5 * .01;
+
+    // Friction coefficients.
+    const Real mu_s = 5;
+    const Real mu_d = 5;
+    const Real mu_v = 0;
+
+    // Ground.
+    // -------
+    
+    // Contact material: concrete.
+    const Real concrete_density = 2300.;  // kg/m^3
+    const Real concrete_young   = 25e9;  // pascals (N/m)
+    const Real concrete_poisson = 0.15;    // ratio
+    const Real concrete_planestrain =
+        ContactMaterial::calcPlaneStrainStiffness(concrete_young,concrete_poisson);
+    const Real concrete_dissipation = 0.005;
+    
+    const ContactMaterial concrete(concrete_planestrain,concrete_dissipation,
+                                   mu_s,mu_d,mu_v);
+
+    m_matter.updGround().updBody().addContactSurface(
+            Transform(Rotation(-0.5 * Pi, ZAxis), Vec3(0)),
+            ContactSurface(ContactGeometry::HalfSpace(), concrete));
+
+    // Feet.
+    // -----
+
+    // Contact material: rubber.
+    const Real rubber_density = 1100.;  // kg/m^3
+    const Real rubber_young   = 0.01e9; // pascals (N/m)
+    const Real rubber_poisson = 0.5;    // ratio
+    const Real rubber_planestrain =
+        ContactMaterial::calcPlaneStrainStiffness(rubber_young,rubber_poisson);
+    const Real rubber_dissipation = /*0.005*/1;
+    
+    const ContactMaterial rubber(rubber_planestrain,rubber_dissipation,
+                                   mu_s,mu_d,mu_v);
 
     ContactSurface contactBall(ContactGeometry::Sphere(contactSphereRadius),
                                rubber);
-
+    
     // Use this clique for contact surfaces on the humanoid that you don't want
     // to have bump into one another. They will still contact Ground.
     const ContactCliqueId clique = ContactSurface::createNewContactClique();
-
     contactBall.joinClique(clique);
+
     DecorativeSphere contactArt(contactSphereRadius);
     contactArt.setColor(Magenta);
 
+    const Vec2 rlatmed(.04,-.04);
+    const Vec2 heelball(-.02,.125);
+
+    // Feet.
     const Real footsphereht = -.07;
-    for (int x=0; x <= 1; ++x)
-        for (int z=0; z <= 1; ++z) {
+    for (int x = 0; x <= 1; ++x)
+    {
+        for (int z = 0; z <= 1; ++z)
+        {
             const Vec3 rctr(heelball[x], footsphereht,  rlatmed[z]);
             const Vec3 lctr(heelball[x], footsphereht, -rlatmed[z]);
+
             foot_rInfo.addContactSurface(rctr, contactBall);
             foot_rInfo.addDecoration(rctr, contactArt);
             foot_lInfo.addContactSurface(lctr, contactBall);
             foot_lInfo.addDecoration(lctr, contactArt);
         }
+    }
 
     // Balls just at toe tips.
     const Real toetip = .06;
-    for (int z=0; z <= 1; ++z) {
+    for (int z = 0; z <= 1; ++z)
+    {
         const Vec3 rctr(toetip, 0,  rlatmed[z]);
         const Vec3 lctr(toetip, 0, -rlatmed[z]);
+
         toes_rInfo.addContactSurface(rctr, contactBall);
         toes_rInfo.addDecoration(rctr, contactArt);
         toes_lInfo.addContactSurface(lctr, contactBall);
         toes_lInfo.addDecoration(lctr, contactArt);
     }
+#endif
 
     //--------------------------------------------------------------------------
     //                         Mobilized Bodies
@@ -737,6 +752,59 @@ Biped::Biped()
         toes_lInfo, Vec3(0));
     addMobilityLinearStop(m_bodies[toes_l], 0, 0, 30); // dorsiflexion
 
+    //--------------------------------------------------------------------------
+    //                    Contact at feet and toes: Rigid
+    //--------------------------------------------------------------------------
+
+#ifdef RIGID_CONTACT
+    // Friction coefficients.
+    const Real mu_s = 0.8;
+    const Real mu_d = 0.5;
+    const Real mu_v = 0;
+
+    // Where the points are located.
+    const Vec2 rlatmed(.04,-.04);
+    const Vec2 heelball(-.02,.125);
+
+    // Feet.
+    const Real footsphereht = -.07;
+    for (int x = 0; x <= 1; ++x)
+    {
+        for (int z = 0; z <= 1; ++z)
+        {
+            const Vec3 rctr(heelball[x], footsphereht,  rlatmed[z]);
+            const Vec3 lctr(heelball[x], footsphereht, -rlatmed[z]);
+
+            PointPlaneContact* ppcr = new PointPlaneContact(
+                    m_matter.updGround(), YAxis, 0.,
+                    m_bodies[foot_r], rctr, CoefRest, mu_s, mu_d, mu_v);
+            PointPlaneContact* ppcl = new PointPlaneContact(
+                    m_matter.updGround(), YAxis, 0.,
+                    m_bodies[foot_l], lctr, CoefRest, mu_s, mu_d, mu_v);
+
+            m_matter.adoptUnilateralContact(ppcr);
+            m_matter.adoptUnilateralContact(ppcl);
+        }
+    }
+
+    // Balls just at toe tips.
+    const Real toetip = .06;
+    for (int z = 0; z <= 1; ++z)
+    {
+        const Vec3 rctr(toetip, 0,  rlatmed[z]);
+        const Vec3 lctr(toetip, 0, -rlatmed[z]);
+
+        PointPlaneContact * ppcr = new PointPlaneContact(
+                m_matter.updGround(), YAxis, 0.,
+                m_bodies[toes_r], rctr, CoefRest, mu_s, mu_d, mu_v);
+        PointPlaneContact * ppcl = new PointPlaneContact(
+                m_matter.updGround(), YAxis, 0.,
+                m_bodies[toes_l], lctr, CoefRest, mu_s, mu_d, mu_v);
+
+        m_matter.adoptUnilateralContact(ppcr);
+        m_matter.adoptUnilateralContact(ppcl);
+    }
+#endif
 }
 
 void Biped::fillInCoordinateMap(const State& s)

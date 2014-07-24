@@ -32,7 +32,7 @@ using namespace std;
 using namespace SimTK;
 
 
-#define RIGID_CONTACT
+// #define RIGID_CONTACT
 
 // Normally SIMBICON has 4 states per gait cycle (i.e. 2 per leg), 2 state is
 // simplified and not as realistic.
@@ -41,11 +41,9 @@ using namespace SimTK;
 // the humanoid upon which the controller depends.
 //#define DROP_LANDING
 
-namespace { // file-scope symbols
+#define EVENT_PERIOD 0.0005
 
-const Vec3 UnitX(1.0, 0.0, 0.0);
-const Vec3 UnitY(0.0, 1.0, 0.0);
-const Vec3 UnitZ(0.0, 0.0, 1.0);
+namespace { // file-scope symbols
 
 double clamp( double x, double max) {
     if (x > max)
@@ -56,7 +54,8 @@ double clamp( double x, double max) {
 
     return x;
 }
-}
+
+} // end namespace
 
 // TODO remove
 const Real RealTimeFactor
@@ -64,11 +63,6 @@ const Real RealTimeFactor
 
 // TODO remove
 const int NumActuators = 30;
-
-// SIMBICON
-
-#define EVENT_PERIOD 0.0005
-//#define RIGID_CONTACT
 
 
 // TODO
@@ -1097,10 +1091,10 @@ iss >> orig;
         // Force::Custom takes ownership over simctrl.
         Force::Custom simbicon(biped.updForceSubsystem(), simctrl);
 
-#ifndef RIGID_CONTACT
+        // TODO #ifndef RIGID_CONTACT
         biped.addEventHandler(
                 new SimbiconStateHandler(biped, *simctrl, EVENT_PERIOD));
-#endif
+        // TODO #endif
 
         // Initialize.
         State s;
