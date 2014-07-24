@@ -32,7 +32,7 @@ using namespace std;
 using namespace SimTK;
 
 
-// #define RIGID_CONTACT
+#define RIGID_CONTACT
 
 // Normally SIMBICON has 4 states per gait cycle (i.e. 2 per leg), 2 state is
 // simplified and not as realistic.
