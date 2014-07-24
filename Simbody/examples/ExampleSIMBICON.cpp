@@ -513,24 +513,25 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
     double trunkExtensionRate = 0;
     double trunkBendingRate = 0;
 
-    // TODO
     const GlobalAngles& cur = m_currentGlobalAngles;
     const GlobalAngles& prev = m_previousGlobalAngles;
-	if (prev.trunkExtension > -100) {
-        if (prev.swingHipFlexion > -100) {
+
+    if (prev.swingHipFlexion > -100) {
         swingHipFlexionRate =
             (cur.swingHipFlexion - prev.swingHipFlexion) / EVENT_PERIOD;
-        }
-        if (prev.swingHipAbduction > -100) {
-            swingHipAbductionRate =
-                (cur.swingHipAbduction - prev.swingHipAbduction) / EVENT_PERIOD;
-        }
+    }
+    if (prev.swingHipAbduction > -100) {
+        swingHipAbductionRate =
+            (cur.swingHipAbduction - prev.swingHipAbduction) / EVENT_PERIOD;
+    }
+	if (prev.trunkExtension > -100) {
         trunkExtensionRate =
             (cur.trunkExtension - prev.trunkExtension) / EVENT_PERIOD;
+	}
+	if (prev.trunkBendingRate > -100) {
         trunkBendingRate =
             (cur.trunkBending - prev.trunkBending) / EVENT_PERIOD;
 	}
-
 
 	// sign change is needed for one of the stance legs in the coronal plane
 	double sign = 1;
