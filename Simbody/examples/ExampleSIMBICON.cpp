@@ -1088,6 +1088,7 @@ iss >> orig;
         viz.addDecoration(MobilizedBodyIndex(0), Vec3(0), help);
         biped.updMatterSubsystem().setShowDefaultGeometry(false);
 
+        /*
         // Add the controller.
         SIMBICON* simctrl = new SIMBICON(biped);
         // Force::Custom takes ownership over simctrl.
@@ -1098,6 +1099,7 @@ iss >> orig;
         biped.addEventHandler(
                 new SimbiconStateHandler(biped, *simctrl, EVENT_PERIOD));
         #endif
+        */
 
         // Initialize.
         State s;
@@ -1122,9 +1124,11 @@ iss >> orig;
         biped.getBody(Biped::trunk).setQToFitTranslation(s, Vec3(0,1.5,0));
         biped.getBody(Biped::trunk).setUToFitLinearVelocity(s, Vec3(1,0,0));
 
+        /*
         // TODO #ifdef RIGID_CONTACT
         viz.addDecorationGenerator(new ShowContact(biped, simctrl));
         // TODO #endif
+        */
 
         // Create an integrator.
 #ifndef RIGID_CONTACT
@@ -1139,9 +1143,10 @@ iss >> orig;
         TimeStepper ts(biped, integ);
 #else
         SemiExplicitEulerTimeStepper ts(biped);
+        ts.setPositionProjectionMethod(SemiExplicitEulerTimeStepper::Bilateral);
         ts.setImpulseSolverType(SemiExplicitEulerTimeStepper::PLUS);
         ts.setInducedImpactModel(SemiExplicitEulerTimeStepper::Simultaneous);
-        //ts.setConstraintTol(1e-5);
+        ts.setConstraintTolerance(0.001);
         ts.setAccuracy(1e-4);
         ts.setMaxInducedImpactsPerStep(1000);
         //ts.setRestitutionModel(SemiExplicitEulerTimeStepper::Poisson);
@@ -1157,6 +1162,7 @@ iss >> orig;
         // Simulate.
         try {
             ts.stepTo(finalTime);
+            std::cout << s.getTime() << std::endl;
             std::cout << "y=" << ts.getState().getY() << std::endl;
             std::cout << "normRMS: " << (orig - ts.getState().getY()).normRMS() << std::endl;
 
