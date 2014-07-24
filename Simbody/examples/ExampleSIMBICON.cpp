@@ -468,34 +468,8 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
 	int swhc = swh - 1; // coronal plane (hip adduction)
 	int sthc = sth - 1; // stance hip adduction
 
-    // Compute necessary translation-related quantities.
-    // =================================================
-    // Rotation-related quantities are computed in updateGlobalAngles().
-
-    const SimbodyMatterSubsystem& matter = m_biped.getMatterSubsystem();
-
-    // Whole-body mass center, expressed in ground.
-	Vec3 massCenterLoc = matter.calcSystemMassCenterLocationInGround(s);
-    // This is 'v' in Yin, 2007.
-	Vec3 massCenterVel = matter.calcSystemMassCenterVelocityInGround(s);
-
-    // Ankle, expressed in ground.
-    const Transform& X = ankle.getInboardFrame(s);
-    Vec3 stanceAnkleLocInParent = X.p();
-    Vec3 stanceAnkleLoc = ankle.getParentMobilizedBody()
-        .findStationLocationInGround(s, stanceAnkleLocInParent);
-
-	Vec3 massCenterLocFromStanceAnkle = massCenterLoc - stanceAnkleLoc;
-
-    // Normals to the sagittal and coronal planes.
-    UnitVec3 sagittalNormal = m_biped.getNormalToSagittalPlane(s);
-    UnitVec3 coronalNormal = m_biped.getNormalToCoronalPlane(s);
-
-	double d_sag = dot(coronalNormal, massCenterLocFromStanceAnkle);
-	double v_sag = dot(coronalNormal, massCenterVel);
-	double d_cor = dot(sagittalNormal, massCenterLocFromStanceAnkle);
-	double v_cor = dot(sagittalNormal, massCenterVel);
-
+    // Get the correct SIMBICON parameters for the current SIMBICONState.
+    // ==================================================================
     // simbiconState stateIdx
     // ------------- --------
     // 0             0
@@ -509,17 +483,40 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
         const int stateIdx = simbiconState % 2;
 #endif
 	double thetad = m_swh[stateIdx];
-    double kp, kd; // position, derivative gains for hip flex/adduction
-    calcGainsFromStrength(hip_flexion_adduction, kp, kd);
 	double cd = 0.2; // global tipping feedback m_cd[stateIdx] TODO
 	double cv = m_cv[stateIdx];
 
-    // TODO
-	// Check there's a valid value for the previous angles.
-	// Otherwise just use 0 for the angular rates.
-	double trunkAngleVelEst[2] = {0, 0};
-	double SWTAngleVelEst[2] = {0, 0};
+    // Compute necessary translation-related quantities.
+    // =================================================
+    const SimbodyMatterSubsystem& matter = m_biped.getMatterSubsystem();
 
+    // Whole-body mass center, expressed in ground.
+	Vec3 massCenterLoc = matter.calcSystemMassCenterLocationInGround(s);
+    // This is 'v' in Yin, 2007.
+	Vec3 massCenterVel = matter.calcSystemMassCenterVelocityInGround(s);
+
+    // Ankle, expressed in ground.
+    const Transform& X = stanceFoot->getInboardFrame(s);
+    Vec3 stanceAnkleLocInParent = X.p();
+    Vec3 stanceAnkleLoc = stanceFoot->getParentMobilizedBody()
+        .findStationLocationInGround(s, stanceAnkleLocInParent);
+
+	Vec3 massCenterLocFromStanceAnkle = massCenterLoc - stanceAnkleLoc;
+
+    // Normals to the sagittal and coronal planes.
+    UnitVec3 sagittalNormal = m_biped.getNormalToSagittalPlane(s);
+    UnitVec3 coronalNormal = m_biped.getNormalToCoronalPlane(s);
+
+	double d_sag = dot(coronalNormal, massCenterLocFromStanceAnkle);
+	double v_sag = dot(coronalNormal, massCenterVel);
+	double d_cor = dot(sagittalNormal, massCenterLocFromStanceAnkle);
+	double v_cor = dot(sagittalNormal, massCenterVel);
+
+    // Compute necessary translation-related quantities.
+    // =================================================
+    // The angles are updated in updateGlobalAngles(); here we compute rates.
+    // Check there's a valid value for the previous angles.  Otherwise just use
+    // 0 for the angular rates.
     double swingHipFlexionRate = 0;
     double swingHipAbductionRate = 0;
     double trunkExtensionRate = 0;
@@ -548,6 +545,10 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
 	double sign = 1;
     if (simbiconState == STATE0 || simbiconState == STATE1) // left stance
 		sign = -1;
+
+    // TODO
+    double kp, kd; // position, derivative gains for hip flex/adduction
+    calcGainsFromStrength(hip_flexion_adduction, kp, kd);
 
 	controls[swh] = clamp(  kp*(thetad + (cd*d_sag + cv*v_sag) - cur.swingHipFlexion)
                           - kd*swingHipFlexionRate, kp);
@@ -599,6 +600,7 @@ void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForc
     coordPDControl(s, Biped::hip_r_rotation, hip_rotation, 0.0, mobForces);
     coordPDControl(s, Biped::hip_l_rotation, hip_rotation, 0.0, mobForces);
 
+    // TODO change to hip_flexion_adduction gaingroup.
     coordPDControl(s, Biped::hip_r_flexion, generic, 0.0, mobForces);
     coordPDControl(s, Biped::hip_l_flexion, generic, 0.0, mobForces);
     coordPDControl(s, Biped::hip_r_adduction, generic, 0.0, mobForces);
@@ -673,7 +675,6 @@ void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForc
     }
 
 	if (simbiconState != NOT_IN_STATE_MACHINE) {
-        // TODO change to NOT_IN_STATE_MACHINE
 		fillInHipJointControls(s, controls);
     }
 
