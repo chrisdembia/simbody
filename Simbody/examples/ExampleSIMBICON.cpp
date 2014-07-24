@@ -40,7 +40,7 @@ using namespace SimTK;
 // TODO USE_GLOBAL_HIPROT
 // Drop landing doesn't use controller so you can run with models other than
 // the humanoid upon which the controller depends.
-#define DROP_LANDING
+//#define DROP_LANDING
 
 namespace { // file-scope symbols
 
@@ -322,12 +322,12 @@ private:
     {
         // TODO
         Real swingHipFlexion;
-        Real swingHipAbduction;
+        Real swingHipAdduction;
         Real trunkExtension;
         Real trunkBending;
         void reset() {
             swingHipFlexion = -100;
-            swingHipAbduction = -100;
+            swingHipAdduction = -100;
             trunkExtension = -100;
             trunkBending = -100;
         }
@@ -373,7 +373,7 @@ SIMBICON::SIMBICON(Biped& biped,
 {
     // TODO
     m_global_angles_file.open("global_angles.txt");
-    m_global_angles_file << "time swtangle0 swtangle1 trunkangle0 trunkangle1 swingHipFlexion swingHipAbduction TrunkExtension TrunkBending" << endl;
+    m_global_angles_file << "time swingHipAdduction" << endl;
     m_proportionalGains[generic] = 300;
     m_proportionalGains[neck] = 100;
     m_proportionalGains[back] = 300;
@@ -521,7 +521,7 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
     // Check there's a valid value for the previous angles.  Otherwise just use
     // 0 for the angular rates.
     double swingHipFlexionRate = 0;
-    double swingHipAbductionRate = 0;
+    double swingHipAdductionRate = 0;
     double trunkExtensionRate = 0;
     double trunkBendingRate = 0;
 
@@ -532,9 +532,9 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
         swingHipFlexionRate =
             (cur.swingHipFlexion - prev.swingHipFlexion) / EVENT_PERIOD;
     }
-    if (prev.swingHipAbduction > -100) {
-        swingHipAbductionRate =
-            (cur.swingHipAbduction - prev.swingHipAbduction) / EVENT_PERIOD;
+    if (prev.swingHipAdduction > -100) {
+        swingHipAdductionRate =
+            (cur.swingHipAdduction - prev.swingHipAdduction) / EVENT_PERIOD;
     }
 	if (prev.trunkExtension > -100) {
         trunkExtensionRate =
@@ -554,25 +554,31 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
     double kp, kd; // position, derivative gains for hip flex/adduction
     calcGainsFromStrength(hip_flexion_adduction, kp, kd);
 
+    // Balance in the sagittal plane.
+    // ==============================
     double desiredSwingHipFlexionAngle = swh + (cd * d_sag + cv * v_sag);
     controls[swing_hip_flexion] = coordPDControlControls(s, swing_hip_flexion,
             hip_flexion_adduction, desiredSwingHipFlexionAngle, cur.swingHipFlexion,
             swingHipFlexionRate);
 
+	// Use the stance hip to control the trunk
+    // This is referred to as \tau_{torso} in Yin, 2007.
+    double sagittalTorsoTorque = kp*(0. - cur.trunkExtension) - kd*trunkExtensionRate;
+    double stanceHipFlexionTorque =
+        -sagittalTorsoTorque - controls[swing_hip_flexion];
+	controls[stance_hip_flexion] = clamp(stanceHipFlexionTorque, kp);
+
+    // Balance in the coronal plane (transverse).
+    // ==========================================
     double desiredSwingHipAdductionAngle =
         swhLat + (cdLat * d_cor + cvLat * v_cor);
     double swingHipAdductionTorque =
-        + kp * (desiredSwingHipAdductionAngle - cur.swingHipAbduction)
-        - kd * swingHipAbductionRate;
+        + kp * (desiredSwingHipAdductionAngle - cur.swingHipAdduction)
+        - kd * swingHipAdductionRate;
     controls[swing_hip_adduction] = sign*(clamp( swingHipAdductionTorque, kp));
-    //TODO    coordPDControlControls(s, swing_hip_adduction,
-    //        hip_flexion_adduction, desiredSwingHipAdductionAngle, cur.swingHipAbduction, swingHipAbductionRate);
+    //    coordPDControlControls(s, swing_hip_adduction,
+    //        hip_flexion_adduction, desiredSwingHipAdductionAngle, cur.swingHipAdduction, swingHipAdductionRate);
     // TODO abd/add
-
-	// use stance hip to control the trunk
-	controls[stance_hip_flexion] =  -kp*(0. - cur.trunkExtension) + kd*trunkExtensionRate;
-	controls[stance_hip_flexion] -= controls[swing_hip_flexion];
-	controls[stance_hip_flexion] = clamp(controls[stance_hip_flexion], kp);
 
 	controls[stance_hip_adduction] = sign*(kp*(0. - cur.trunkBending) - kd*trunkBendingRate);
 	controls[stance_hip_adduction] -= controls[swing_hip_adduction];
@@ -614,7 +620,8 @@ void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForc
     coordPDControl(s, Biped::hip_r_rotation, hip_rotation, 0.0, mobForces);
     coordPDControl(s, Biped::hip_l_rotation, hip_rotation, 0.0, mobForces);
 
-    // TODO change to hip_flexion_adduction gaingroup.
+    // TODO change to hip_flexion_adduction gaingroup. TODO are these even
+    // used?
     coordPDControl(s, Biped::hip_r_flexion, generic, 0.0, mobForces);
     coordPDControl(s, Biped::hip_l_flexion, generic, 0.0, mobForces);
     coordPDControl(s, Biped::hip_r_adduction, generic, 0.0, mobForces);
@@ -722,17 +729,22 @@ void SIMBICON::updateGlobalAngles(const State& s)
     // =============================
     const MobilizedBody* stanceFoot;
     const MobilizedBody* swingThigh;
+    // Ensures that, e.g., the global hip adduction angle is always adduction
+    // and not abduction.
+    double sense = -1.0; // TODO
     if (simbiconState == STATE0 || simbiconState == STATE1)
     {
         // Left leg is in stance.
         stanceFoot = &m_biped.getBody(Biped::foot_l);
         swingThigh = &m_biped.getBody(Biped::thigh_r);
+// TODO        sense = 1.0;
     }
     else if (simbiconState == STATE2 || simbiconState == STATE3)
     {
         // Right leg is in stance.
         stanceFoot = &m_biped.getBody(Biped::foot_r);
         swingThigh = &m_biped.getBody(Biped::thigh_l);
+        sense = -1.0;
     }
     else SimTK_THROW(Exception::Base);
 
@@ -750,8 +762,9 @@ void SIMBICON::updateGlobalAngles(const State& s)
     // This vector is in sagittal plane, and is parallel to the ground.
     UnitVec3 sagittalHorizontal(cross(up, sagittalNormal));
 
-    // A horizontal vector in the coronal plane, directed to the 'right'.
-    UnitVec3 coronalHorizontal(-cross(up, coronalNormal));
+    // A horizontal vector in the coronal plane. Directed to the right if
+    // right leg is in stance, to the left if the left leg is in stance.
+    UnitVec3 coronalHorizontal(sense * cross(up, coronalNormal));
 
     // Global hip angles.
     // ==================
@@ -779,7 +792,7 @@ void SIMBICON::updateGlobalAngles(const State& s)
             projectionOntoPlane(swingThighAxialDir, coronalNormal));
 
     // Angle between the thigh axis and the vertical, in the coronal plane.
-    cur.swingHipAbduction =
+    cur.swingHipAdduction =
         acos(dot(coronalSwingThighAxialDir, coronalHorizontal)) - Pi / 2;
     // TODO change sign for when left leg is in swing.
 
@@ -813,6 +826,8 @@ void SIMBICON::updateGlobalAngles(const State& s)
     // Angle between the pelvis axis and the vertical, in the coronal plane.
     cur.trunkBending =
         acos(dot(coronalPelvisAxialDir, coronalHorizontal)) - Pi/2;
+
+    m_global_angles_file << s.getTime() << " " << cur.swingHipAdduction << std::endl;
 }
 
 /* TODO
@@ -1096,9 +1111,7 @@ iss >> orig;
         */
 
     biped.getBody(Biped::trunk).setQToFitTranslation(s, Vec3(0,1.5,0));
-    // TODO biped.getBody(Biped::trunk).setUToFitLinearVelocity(s, Vec3(1,0,0));
-    biped.getBody(Biped::thigh_r).setOneQ(s, 1, 0.5);
-    biped.getBody(Biped::thigh_l).setOneQ(s, 1, 0.5);
+    biped.getBody(Biped::trunk).setUToFitLinearVelocity(s, Vec3(1,0,0));
     viz.report(s);
 
 // TODO #ifdef RIGID_CONTACT
