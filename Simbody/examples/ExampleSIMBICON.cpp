@@ -21,6 +21,20 @@
  * limitations under the License.                                             *
  * -------------------------------------------------------------------------- */
 
+// Use rigid contact instead of compliant contact. This macro is used in the
+// Biped header.
+// TODO #define RIGID_CONTACT
+
+// Normally SIMBICON has 4 states per gait cycle (i.e. 2 per leg), 2 state is
+// simplified and not as realistic.
+#define TWO_STATE
+
+// Drop landing doesn't use controller so you can run with models other than
+// the humanoid upon which the controller depends.
+//#define DROP_LANDING
+
+#define EVENT_PERIOD 0.0005
+
 #include "BipedSystem.h"
 #include <Simbody.h>
 
@@ -31,17 +45,6 @@
 using namespace std;
 using namespace SimTK;
 
-
-// #define RIGID_CONTACT
-
-// Normally SIMBICON has 4 states per gait cycle (i.e. 2 per leg), 2 state is
-// simplified and not as realistic.
-#define TWO_STATE
-// Drop landing doesn't use controller so you can run with models other than
-// the humanoid upon which the controller depends.
-//#define DROP_LANDING
-
-#define EVENT_PERIOD 0.0005
 
 namespace { // file-scope symbols
 
@@ -880,10 +883,8 @@ void SIMBICON::updateGlobalAngles(const State& s)
 
 void SIMBICON::updateSIMBICONState(const State& s) const
 {
-    Real lForce, rForce;
-    m_biped.findContactForces(s, lForce, rForce);
-    const bool lContact = (lForce > 0);
-    const bool rContact = (rForce > 0);
+    bool lContact, rContact;
+    m_biped.findContactStatus(s, lContact, rContact);
 
     const SIMBICONState simbiconState = getSIMBICONState(s);
     const Real duration = s.getTime() - getSIMBICONStateStartTime(s);

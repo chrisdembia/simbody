@@ -216,6 +216,11 @@ private:
 
     /// The indices of each coordinate's Q and U in the State vector.
     std::map<Coordinate, std::pair<QIndex, UIndex> > m_coordinates;
+
+    #ifdef RIGID_CONTACT
+        std::vector<PointPlaneContact*> m_rightContacts;
+        std::vector<PointPlaneContact*> m_leftContacts;
+    #endif
 };
 
 Biped::Biped()
@@ -758,6 +763,7 @@ Biped::Biped()
 
 #ifdef RIGID_CONTACT
     // Friction coefficients.
+    const Real CoefRest = 0.0;
     const Real mu_s = 0.8;
     const Real mu_d = 0.5;
     const Real mu_v = 0;
@@ -784,6 +790,9 @@ Biped::Biped()
 
             m_matter.adoptUnilateralContact(ppcr);
             m_matter.adoptUnilateralContact(ppcl);
+
+            m_rightContacts.push_back(ppcr);
+            m_leftContacts.push_back(ppcl);
         }
     }
 
@@ -803,6 +812,9 @@ Biped::Biped()
 
         m_matter.adoptUnilateralContact(ppcr);
         m_matter.adoptUnilateralContact(ppcl);
+
+        m_rightContacts.push_back(ppcr);
+        m_leftContacts.push_back(ppcl);
     }
 #endif
 }
@@ -864,12 +876,28 @@ void Biped::fillInCoordinateMap(const State& s)
 }
 
 void Biped::findContactForces(const State& s, Real& fLeft, Real& fRight) const
-    {
+{
+    fLeft = 0;
+    fRight = 0;
+
+    #ifdef RIGID_CONTACT
+
+        for (unsigned int iRight = 0; iRight < m_rightContacts.size(); ++iRight)
+        {
+            const UnilateralContact* contact = m_rightContacts[iRight];
+            fRight += s.getMultipliers()[contact->getContactMultiplierIndex(s)];
+        }
+        for (unsigned int iLeft = 0; iLeft < m_leftContacts.size(); ++iLeft)
+        {
+            const UnilateralContact* contact = m_leftContacts[iLeft];
+            fLeft += s.getMultipliers()[contact->getContactMultiplierIndex(s)];
+        }
+        
+    #else
+
         const unsigned int nContacts = m_contact.getNumContactForces(s);
         const ContactSnapshot& snapshot = m_tracker.getActiveContacts(s);
-
-        fLeft = 0;
-        fRight = 0;
+    
         for (unsigned int i = 0; i < nContacts; ++i)
         {
             const ContactForce& force = m_contact.getContactForce(s, i);
@@ -889,16 +917,30 @@ void Biped::findContactForces(const State& s, Real& fLeft, Real& fRight) const
                 fRight += force.getForceOnSurface2()[1].norm();
             }
         }
-    }
+
+    #endif
+}
 
 void Biped::findContactStatus(const State& s, bool& left, bool& right) const
 {
-    Real fLeft;
-    Real fRight;
-    findContactForces(s, fLeft, fRight);
-    left = fLeft > 0;
-    right = fRight > 0;
+    #ifdef RIGID_CONTACT
+        left = false;
+        right = false;
+        for (unsigned int iRight = 0; iRight < m_rightContacts.size(); ++iRight)
+        {
+            right = right || m_rightContacts[iRight]->isEnabled(s);
+        }
+        for (unsigned int iLeft = 0; iLeft < m_leftContacts.size(); ++iLeft)
+        {
+            left = left || m_leftContacts[iLeft]->isEnabled(s);
+        }
+    #else
+        Real fLeft;
+        Real fRight;
+        findContactForces(s, fLeft, fRight);
+        left = fLeft > 0;
+        right = fRight > 0;
+    #endif
 }
 
-#endif
-
+#endif // SimTK_SIMBODY_BIPEDSYSTEM_H_
