@@ -307,9 +307,6 @@ private:
 
     void computeControls(const State& s, Vector& controls, Vector& mobForces) const;
 
-    // TODO get rid of this.
-	void getSagCorNormals( const SimTK::State& s,
-		SimTK::Vec3& sagN, SimTK::Vec3& corN ) const;
 	void fillInHipJointControls( const SimTK::State& s,
 		SimTK::Vector& controls ) const;
 
@@ -431,28 +428,33 @@ void SIMBICON::calcForce(const State&         s,
 }
 
 
-// Project the pelvis z (right) and x (forward) directions onto the Ground
-// (x-z) plane, and normalize. Projected z is the normal to the sagittal plane;
-// projected x is the normal to the coronal plane.
-void SIMBICON::getSagCorNormals(const State& s, Vec3& sagN, Vec3& corN ) const {
-	const MobilizedBody& pelvis = m_biped.getBody(Biped::pelvis);
-
-    sagN = Vec3(pelvis.getBodyRotation(s).z());
-    corN = Vec3(pelvis.getBodyRotation(s).x());
-	sagN[YAxis] = 0; // project to y==0
-	sagN = sagN.normalize();
-	corN[YAxis] = 0; // project to y==0
-	corN = corN.normalize();
-}
-
 void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const {
-	const SimbodyMatterSubsystem& matter = m_biped.getMatterSubsystem();
-	const SIMBICONState simbiconState = getSIMBICONState(s);
-	Vec3 sagN, corN;
 
-    // Sagittal and coronal plane normals are right and front directions of
-    // the pelvis, projected on the ground plane.
-	getSagCorNormals(s, sagN, corN);
+    // Which leg is in stance?
+    // =======================
+	const SIMBICONState simbiconState = getSIMBICONState(s);
+
+    Biped::Coordinate swing_hip_flexion;
+    Biped::Coordinate swing_hip_adduction;
+    Biped::Coordinate stance_hip_adduction;
+    const MobilizedBody* stanceFoot;
+    if (simbiconState == STATE0 || simbiconState == STATE1)
+    {
+        // Left leg is in stance.
+        swing_hip_flexion = Biped::hip_r_flexion;
+        swing_hip_adduction = Biped::hip_r_adduction;
+        stance_hip_adduction = Biped::hip_l_adduction;
+        stanceFoot = &m_biped.getBody(Biped::foot_l);
+    }
+    else if (simbiconState == STATE2 || simbiconState == STATE3)
+    {
+        // Right leg is in stance.
+        swing_hip_flexion = Biped::hip_l_flexion;
+        swing_hip_adduction = Biped::hip_l_adduction;
+        stance_hip_adduction = Biped::hip_r_adduction;
+        stanceFoot = &m_biped.getBody(Biped::foot_r);
+    }
+    else SimTK_THROW(Exception::Base);
 
 	int swh = Biped::hip_r_flexion;             // swing hip
 	int sth = Biped::hip_l_flexion;             // stance hip
@@ -465,21 +467,34 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
 	}
 	int swhc = swh - 1; // coronal plane (hip adduction)
 	int sthc = sth - 1; // stance hip adduction
-	int sta = sth + 4;  // stance ankle dorsiflexion
 
-    const Transform& X_PF = ankle.getInboardFrame(s);
-    Vec3 ankleLocInParent = X_PF.p();
-    Vec3 ankleLoc = ankle.getParentMobilizedBody()
-                         .findStationLocationInGround(s,ankleLocInParent);
+    // Compute necessary translation-related quantities.
+    // =================================================
+    // Rotation-related quantities are computed in updateGlobalAngles().
 
-	Vec3 com = matter.calcSystemMassCenterLocationInGround(s);
-	Vec3 d = com - ankleLoc;
-	Vec3 v_com = matter.calcSystemMassCenterVelocityInGround(s);
+    const SimbodyMatterSubsystem& matter = m_biped.getMatterSubsystem();
 
-	double d_sag = dot(corN, d);
-	double v_sag = dot(corN, v_com);
-	double d_cor = dot(sagN, d);
-	double v_cor = dot(sagN, v_com);
+    // Whole-body mass center, expressed in ground.
+	Vec3 massCenterLoc = matter.calcSystemMassCenterLocationInGround(s);
+    // This is 'v' in Yin, 2007.
+	Vec3 massCenterVel = matter.calcSystemMassCenterVelocityInGround(s);
+
+    // Ankle, expressed in ground.
+    const Transform& X = ankle.getInboardFrame(s);
+    Vec3 stanceAnkleLocInParent = X.p();
+    Vec3 stanceAnkleLoc = ankle.getParentMobilizedBody()
+        .findStationLocationInGround(s, stanceAnkleLocInParent);
+
+	Vec3 massCenterLocFromStanceAnkle = massCenterLoc - stanceAnkleLoc;
+
+    // Normals to the sagittal and coronal planes.
+    UnitVec3 sagittalNormal = m_biped.getNormalToSagittalPlane(s);
+    UnitVec3 coronalNormal = m_biped.getNormalToCoronalPlane(s);
+
+	double d_sag = dot(coronalNormal, massCenterLoc);
+	double v_sag = dot(coronalNormal, massCenterVel);
+	double d_cor = dot(sagittalNormal, massCenterLoc);
+	double v_cor = dot(sagittalNormal, massCenterVel);
 
     // simbiconState stateIdx
     // ------------- --------

@@ -32,40 +32,6 @@ using namespace SimTK;
 #define DEG(rad) convertRadiansToDegrees(rad)
 #define RAD(deg) convertDegreesToRadians(deg)
 
-const char* coordinate_strings[] = {
-    "neck_extension",
-    "neck_bending",
-    "neck_rotation",
-    "back_tilt",
-    "back_list",
-    "back_rotation",
-    "shoulder_r_flexion",
-    "shoulder_r_adduction",
-    "shoulder_r_rotation",
-    "elbow_r_flexion",
-    "elbow_r_rotation",
-    "shoulder_l_flexion",
-    "shoulder_l_adduction",
-    "shoulder_l_rotation",
-    "elbow_l_flexion",
-    "elbow_l_rotation",
-    "hip_r_adduction",
-    "hip_r_flexion",
-    "hip_r_rotation",
-    "knee_r_extension",
-    "ankle_r_inversion",
-    "ankle_r_dorsiflexion",
-    "mtp_r_dorsiflexion",
-    "hip_l_adduction",
-    "hip_l_flexion",
-    "hip_l_rotation",
-    "knee_l_extension",
-    "ankle_l_inversion",
-    "ankle_l_dorsiflexion",
-    "mtp_l_dorsiflexion",
-    0
-};
-
 /// The MultibodySystem that we will control with the SIMBICON controller
 /// This system is independent of the controller, and could conceivably
 /// be controlled by a different controller.
