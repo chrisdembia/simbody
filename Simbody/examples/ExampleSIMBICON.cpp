@@ -68,7 +68,7 @@ const int NumActuators = 30;
 
 // SIMBICON
 
-#define STATE_UPD_STEPSIZE 0.0005
+#define EVENT_PERIOD 0.0005
 //#define RIGID_CONTACT
 
 
@@ -436,6 +436,7 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
 
     Biped::Coordinate swing_hip_flexion;
     Biped::Coordinate swing_hip_adduction;
+    Biped::Coordinate stance_hip_flexion;
     Biped::Coordinate stance_hip_adduction;
     const MobilizedBody* stanceFoot;
     if (simbiconState == STATE0 || simbiconState == STATE1)
@@ -443,6 +444,7 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
         // Left leg is in stance.
         swing_hip_flexion = Biped::hip_r_flexion;
         swing_hip_adduction = Biped::hip_r_adduction;
+        stance_hip_flexion = Biped::hip_l_flexion;
         stance_hip_adduction = Biped::hip_l_adduction;
         stanceFoot = &m_biped.getBody(Biped::foot_l);
     }
@@ -451,22 +453,11 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
         // Right leg is in stance.
         swing_hip_flexion = Biped::hip_l_flexion;
         swing_hip_adduction = Biped::hip_l_adduction;
+        stance_hip_flexion = Biped::hip_r_flexion;
         stance_hip_adduction = Biped::hip_r_adduction;
         stanceFoot = &m_biped.getBody(Biped::foot_r);
     }
     else SimTK_THROW(Exception::Base);
-
-	int swh = Biped::hip_r_flexion;             // swing hip
-	int sth = Biped::hip_l_flexion;             // stance hip
-    MobilizedBody ankle = m_biped.getBody(Biped::foot_l); // stance ankle
-
-    if (simbiconState == STATE2 || simbiconState == STATE3) { // right stance
-		swh = Biped::hip_l_flexion;
-		sth = Biped::hip_r_flexion;
-        ankle = m_biped.getBody(Biped::foot_r);
-	}
-	int swhc = swh - 1; // coronal plane (hip adduction)
-	int sthc = sth - 1; // stance hip adduction
 
     // Get the correct SIMBICON parameters for the current SIMBICONState.
     // ==================================================================
@@ -528,16 +519,16 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
 	if (prev.trunkExtension > -100) {
         if (prev.swingHipFlexion > -100) {
         swingHipFlexionRate =
-            (cur.swingHipFlexion - prev.swingHipFlexion) / STATE_UPD_STEPSIZE;
+            (cur.swingHipFlexion - prev.swingHipFlexion) / EVENT_PERIOD;
         }
         if (prev.swingHipAbduction > -100) {
             swingHipAbductionRate =
-                (cur.swingHipAbduction - prev.swingHipAbduction) / STATE_UPD_STEPSIZE;
+                (cur.swingHipAbduction - prev.swingHipAbduction) / EVENT_PERIOD;
         }
         trunkExtensionRate =
-            (cur.trunkExtension - prev.trunkExtension) / STATE_UPD_STEPSIZE;
+            (cur.trunkExtension - prev.trunkExtension) / EVENT_PERIOD;
         trunkBendingRate =
-            (cur.trunkBending - prev.trunkBending) / STATE_UPD_STEPSIZE;
+            (cur.trunkBending - prev.trunkBending) / EVENT_PERIOD;
 	}
 
 
@@ -550,19 +541,20 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
     double kp, kd; // position, derivative gains for hip flex/adduction
     calcGainsFromStrength(hip_flexion_adduction, kp, kd);
 
-	controls[swh] = clamp(  kp*(thetad + (cd*d_sag + cv*v_sag) - cur.swingHipFlexion)
+	controls[swing_hip_flexion] = clamp(  kp*(thetad + (cd*d_sag + cv*v_sag) - cur.swingHipFlexion)
                           - kd*swingHipFlexionRate, kp);
-	controls[swhc] = sign*(clamp(  kp*(0.0 + (cd*d_cor + cv*v_cor) - cur.swingHipAbduction)
+	controls[swing_hip_adduction] = sign*(clamp(  kp*(0.0 + (cd*d_cor + cv*v_cor) - cur.swingHipAbduction)
                                  - kd*swingHipAbductionRate, kp));
+    // TODO abd/add
 
 	// use stance hip to control the trunk
-	controls[sth] =  -kp*(0. - cur.trunkExtension) + kd*trunkExtensionRate;
-	controls[sth] -= controls[swh];
-	controls[sth] = clamp(controls[sth], kp);
+	controls[stance_hip_flexion] =  -kp*(0. - cur.trunkExtension) + kd*trunkExtensionRate;
+	controls[stance_hip_flexion] -= controls[swing_hip_flexion];
+	controls[stance_hip_flexion] = clamp(controls[stance_hip_flexion], kp);
 
-	controls[sthc] = sign*(kp*(0. - cur.trunkBending) - kd*trunkBendingRate);
-	controls[sthc] -= controls[swhc];
-	controls[sthc] = clamp(controls[sthc], kp);
+	controls[stance_hip_adduction] = sign*(kp*(0. - cur.trunkBending) - kd*trunkBendingRate);
+	controls[stance_hip_adduction] -= controls[swing_hip_adduction];
+	controls[stance_hip_adduction] = clamp(controls[stance_hip_adduction], kp);
 
 }
 
@@ -1057,7 +1049,7 @@ iss >> orig;
 
 #ifndef RIGID_CONTACT
     biped.addEventHandler(new SimbiconStateHandler(biped,*simctrl,
-                                                          STATE_UPD_STEPSIZE));
+                                                          EVENT_PERIOD));
 #endif
 
     State s;
