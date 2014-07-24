@@ -90,6 +90,7 @@ public:
     ///   * cv: velocity balance feedback coefficient
     ///   * cvLat: velocity balance feedback coefficient, lateral (for 3D gait)
     ///   * tor: torso target angle
+    ///   * torLat: torso target angle, lateral (for 3D gait)
     ///   * swh: swing-hip target angle
     ///   * swhLat: swing-hip target angle, lateral (for 3D gait)
     ///   * swk: swing-knee target angle
@@ -107,6 +108,7 @@ public:
             Vec2 cv=Vec2(0.2, 0.2),
             Vec2 cvLat=Vec2(0.2, 0.2),
             Vec2 tor=Vec2(0.0, 0.0),
+            Vec2 torLat=Vec2(0.0, 0.0),
             Vec2 swh=Vec2(0.5, -0.1),
             Vec2 swhLat=Vec2(0.0, 0.0),
             Vec2 swk=Vec2(-1.1, -0.05),
@@ -287,6 +289,7 @@ private:
     const Vec2 m_cv;
     const Vec2 m_cvLat;
     const Vec2 m_tor;
+    const Vec2 m_torLat;
     const Vec2 m_swh;
     const Vec2 m_swhLat;
     const Vec2 m_swk;
@@ -362,13 +365,14 @@ Real criticallyDampedDerivativeGain(Real proportionalGain) {
 SIMBICON::SIMBICON(Biped& biped,
         Real minSIMBICONStateDuration,
         Vec2 deltaT, Vec2 cd, Vec2 cdLat, Vec2 cv,
-        Vec2 cvLat, Vec2 tor, Vec2 swh, Vec2 swhLat, Vec2 swk, Vec2 swa, Vec2
-        stk, Vec2 sta)
+        Vec2 cvLat, Vec2 tor, Vec2 torLat, Vec2 swh, Vec2 swhLat, Vec2 swk,
+        Vec2 swa, Vec2 stk, Vec2 sta)
     : m_biped(biped), m_forces(m_biped.getForceSubsystem()),
       m_minSIMBICONStateDuration(minSIMBICONStateDuration),
       m_deltaT(deltaT), m_cd(cd),
-      m_cdLat(cdLat), m_cv(cv), m_cvLat(cvLat), m_tor(tor), m_swh(swh),
-      m_swhLat(swhLat), m_swk(swk), m_swa(swa), m_stk(stk), m_sta(sta)
+      m_cdLat(cdLat), m_cv(cv), m_cvLat(cvLat), m_tor(tor), m_torLat(torLat),
+      m_swh(swh), m_swhLat(swhLat), m_swk(swk), m_swa(swa), m_stk(stk),
+      m_sta(sta)
 
 {
     // TODO
@@ -483,6 +487,8 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
     // Target angle for swing hip flexion.
 	double swh = m_swh[stateIdx];
     double swhLat = m_swhLat[stateIdx];
+	double tor = m_tor[stateIdx];
+    double torLat = m_torLat[stateIdx];
     // Feedback gains for the global angles global angular rates.
 	double cd = 0.2; // global tipping feedback m_cd[stateIdx] TODO
     double cdLat = 0.2; // TODO  m_cdLat[stateIdx];
@@ -565,7 +571,7 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
     // ----------------------------------------
     // This is referred to as \tau_{torso} in Yin, 2007.
     double sagittalTorsoTorque =
-        kp*(0. - cur.trunkExtension) - kd*trunkExtensionRate;
+        kp * (tor - cur.trunkExtension) - kd * trunkExtensionRate;
     double stanceHipFlexionTorque =
         -sagittalTorsoTorque - controls[swing_hip_flexion];
 	controls[stance_hip_flexion] = clamp(stanceHipFlexionTorque, kp);
@@ -583,7 +589,7 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
     // TODO abd/add
 
     double coronalTorsoTorque =
-        sign*(kp*(0. - cur.trunkBending) - kd*trunkBendingRate);
+        sign * (kp * (torLat - cur.trunkBending) - kd * trunkBendingRate);
     double stanceHipAdductionTorque =
         coronalTorsoTorque - controls[swing_hip_adduction]; // TODO
 	controls[stance_hip_adduction] = clamp(stanceHipAdductionTorque, kp);
