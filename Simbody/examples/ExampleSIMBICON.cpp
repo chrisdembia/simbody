@@ -37,7 +37,6 @@ using namespace SimTK;
 // Normally SIMBICON has 4 states per gait cycle (i.e. 2 per leg), 2 state is
 // simplified and not as realistic.
 #define TWO_STATE
-// TODO USE_GLOBAL_HIPROT
 // Drop landing doesn't use controller so you can run with models other than
 // the humanoid upon which the controller depends.
 //#define DROP_LANDING
@@ -49,13 +48,13 @@ const Vec3 UnitY(0.0, 1.0, 0.0);
 const Vec3 UnitZ(0.0, 0.0, 1.0);
 
 double clamp( double x, double max) {
-	if (x > max)
-		x = max;
+    if (x > max)
+        x = max;
 
-	if (x < -max)
-		x = -max;
+    if (x < -max)
+        x = -max;
 
-	return x;
+    return x;
 }
 }
 
@@ -75,6 +74,43 @@ const int NumActuators = 30;
 // TODO
 class SimbiconStateHandler;
 
+/*
+
+SIMBICON stands for Simple Biped Controller. It is described at
+https://www.cs.ubc.ca/~van/papers/Simbicon.htm.
+
+The controller uses a "finite state machine" / "pose control graph": the biped
+is always in some state, and all states have a target pose. The number of
+states is typically 4.  The joints are torque-actuated, and the torques are
+given by proportional-derivative (PD) control laws that minimize the error of a
+given joint angle from that in the target pose:
+
+    \tau = k_p (\theta_{des} - \theta) - k_d \dot{\theta}
+
+There are some exceptions to this general control scheme. Namely, the target
+angles for the torso and "swing-leg femur" are specified relative to the global
+frame. These two angles are used to balance of the biped.
+
+The parameters of the controller are used to define the motion that the biped
+executes. The motions the controller can achieve consist of walking, running,
+and variants on both (e.g, 'high-step walk').
+
+See [1], particularly Table 1 of [1], for more information.
+
+To see how X happens, look in method Y:
+
+X                                        Y
+---------------------------------------  ---------------------------------------
+construction of the model                Biped::Biped()
+control laws                             SIMBICON::addInPDControl()
+                                         SIMBICON::addInBalanceControl()
+logic to change state in state machine   SIMBICON::updateSIMBICONState()
+
+[1] Yin, KangKang, Kevin Loken, and Michiel van de Panne. "SIMBICON: Simple
+biped locomotion control." ACM Transactions on Graphics (TOG). Vol. 26. No. 3.
+ACM, 2007.
+
+*/
 class SIMBICON : public SimTK::Force::Custom::Implementation
 {
 public:
@@ -86,7 +122,6 @@ public:
     ///
     ///   * deltaT: state dwell duration
     ///   * cd: position balance feedback coefficient
-    ///   * cdLat: position balance feedback coefficient, lateral (for 3D gait)
     ///   * cv: velocity balance feedback coefficient
     ///   * cvLat: velocity balance feedback coefficient, lateral (for 3D gait)
     ///   * tor: torso target angle
@@ -100,7 +135,7 @@ public:
     ///
     /// See the SIMBICON paper for information about these parameters.
     ///
-	SIMBICON(Biped& biped,
+    SIMBICON(Biped& biped,
             Real minSIMBICONStateDuration=0.1,
             Vec2 deltaT=Vec2(0.30, NaN),
             Vec2 cd=Vec2(0.5, 0.5),
@@ -141,9 +176,10 @@ public:
         // able to regenerate the cache appropriately.
         //
         // 2. We can think of the model-building process as having a state and
-        // a cache. The state is the things that make up the model, such as the
-        // MobilizedBody's. The cache in this case is quantities computed from
-        // this model-buidling state, such as the number of mobilized bodies.
+        // a cache. The state consists of things that make up the model, such
+        // as the MobilizedBody's. The cache in this case is quantities
+        // computed from this model-buidling state, such as the number of
+        // mobilized bodies.
         //
         // 3. Therefore, quantities computed about the model-building state do
         // not need to be const.
@@ -200,15 +236,17 @@ public:
     };
 
     // TODO
-	void updateGlobalAngles(const SimTK::State& s);
+    void updateGlobalAngles(const SimTK::State& s);
 
 private:
 
     /// Determine if the SIMBICON state of the state machine has changed.
     void updateSIMBICONState(const State& s) const;
 
-    void setSIMBICONState(const State& s, SIMBICONState simbiconState, bool LC, bool RC) const
+    void setSIMBICONState(const State& s, SIMBICONState simbiconState,
+            bool LC, bool RC) const
     {
+        // TODO remove LC RC
         m_forces.updDiscreteVarUpdateValue(s, m_simbiconStateIndex) =
             Value<SIMBICONState>(simbiconState);
         m_forces.markDiscreteVarUpdateValueRealized(s, m_simbiconStateIndex);
@@ -218,12 +256,12 @@ private:
 
         // TODO
         /*
-		if (simbiconState == STATE0 || simbiconState == STATE2) {
-			// reset the swing thigh orientation when the swing leg changes
-			for (int i = 0; i < 2; i++) {
-				const_cast<SIMBICON*>(this)->_lastSWTAngle[i] = -100.0;
-				const_cast<SIMBICON*>(this)->_curSWTAngle[i] = -100.0;
-			}
+        if (simbiconState == STATE0 || simbiconState == STATE2) {
+            // reset the swing thigh orientation when the swing leg changes
+            for (int i = 0; i < 2; i++) {
+                const_cast<SIMBICON*>(this)->_lastSWTAngle[i] = -100.0;
+                const_cast<SIMBICON*>(this)->_curSWTAngle[i] = -100.0;
+            }
         }
         */
     }
@@ -254,6 +292,7 @@ private:
 
         return force;
     }
+
     // TODO
     Real coordPDControlControls(const State& s,
             const Biped::Coordinate coord, const GainGroup gainGroup,
@@ -276,6 +315,14 @@ private:
         kp = m_proportionalGains.at(group);
         kd = m_derivativeGains.at(group);
     }
+
+    // TODO
+    void computeControls(const State& s, Vector& controls, Vector& mobForces)
+        const;
+
+    // TODO
+    void fillInHipJointControls( const SimTK::State& s,
+        SimTK::Vector& controls ) const;
 
     Biped& m_biped;
     const GeneralForceSubsystem& m_forces;
@@ -302,28 +349,12 @@ private:
     /// Derivative (speed) gains; mostly chosen for critical damping.
     std::map<GainGroup, Real> m_derivativeGains;
 
-    // The SIMBICON controller itself has some state.
-    // ----------------------------------------------
-    // Written during the realizeTopology step.
-
-    /// The SIMBICON state of the controller for the finite state machine
-    /// (e.g., 0, 1, 2, or 3). We read the value of this variable using this
-    //index.
-    DiscreteVariableIndex m_simbiconStateIndex;
-
-    /// We set the value of the SIMBICON state using this index.
-    CacheEntryIndex m_simbiconStateCacheIndex;
-
-    void computeControls(const State& s, Vector& controls, Vector& mobForces) const;
-
-	void fillInHipJointControls( const SimTK::State& s,
-		SimTK::Vector& controls ) const;
-
+    // Global angles.
+    // --------------
     /// Angles used for balance control. These angles describe the orientation
     /// of parts of the Biped relative to the sagittal and coronal planes.
     struct GlobalAngles
     {
-        // TODO
         Real swingHipFlexion;
         Real swingHipAdduction;
         Real trunkExtension;
@@ -341,6 +372,18 @@ private:
     /// Global angles from the prevoius call to updateGlobalAngles.
     GlobalAngles m_previousGlobalAngles;
 
+    // The SIMBICON controller itself has some state.
+    // ----------------------------------------------
+    // Written during the realizeTopology step.
+
+    /// The SIMBICON state of the controller for the finite state machine
+    /// (e.g., 0, 1, 2, or 3). We read the value of this variable using this
+    //index.
+    DiscreteVariableIndex m_simbiconStateIndex;
+
+    /// We set the value of the SIMBICON state using this index.
+    CacheEntryIndex m_simbiconStateCacheIndex;
+
     // TODO
     friend SimbiconStateHandler;
     mutable double coronalTorsoTorque;
@@ -355,12 +398,13 @@ private:
 class SimbiconStateHandler : public SimTK::PeriodicEventHandler {
 public:
     SimbiconStateHandler(Biped& m, SIMBICON& simctrl, SimTK::Real interval);
-
-    void handleEvent(SimTK::State& s, SimTK::Real accuracy, bool& shouldTerminate) const;
+    void handleEvent(SimTK::State& s, SimTK::Real accuracy,
+            bool& shouldTerminate) const;
 private:
-    Biped& _model;
-    SIMBICON& _simctrl;
+    Biped& m_biped;
+    SIMBICON& m_simctrl;
 };
+
 Real criticallyDampedDerivativeGain(Real proportionalGain) {
     return 2.0 * std::sqrt(proportionalGain);
 }
@@ -427,18 +471,24 @@ void SIMBICON::calcForce(const State&         s,
                          Vector_<Vec3>&       /*particleForces*/,
                          Vector&              mobilityForces) const
 {
-    updateSIMBICONState(s);
-    Vector controls(NumActuators);
-    controls.setToZero();
-    computeControls(s,controls, mobilityForces);
-
-    for (int i=0; i<NumActuators; ++i)
-    {
-        if (controls[i] != 0)
+    #ifdef DROP_LANDING
+        for (int i = 0; i < mobilityForces.size(); i++)
+            mobilityForces[i] = 0.0;
+        return;
+    #else
+        updateSIMBICONState(s);
+        Vector controls(NumActuators);
+        controls.setToZero();
+        computeControls(s,controls, mobilityForces);
+    
+        for (int i=0; i<NumActuators; ++i)
         {
-            mobilityForces[m_biped.getUIndex(Biped::Coordinate(i))] = controls[i];
+            if (controls[i] != 0)
+            {
+                mobilityForces[m_biped.getUIndex(Biped::Coordinate(i))] = controls[i];
+            }
         }
-    }
+    #endif
 }
 
 
@@ -446,7 +496,7 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
 
     // Which leg is in stance?
     // =======================
-	const SIMBICONState simbiconState = getSIMBICONState(s);
+    const SIMBICONState simbiconState = getSIMBICONState(s);
 
     Biped::Coordinate swing_hip_flexion;
     Biped::Coordinate swing_hip_adduction;
@@ -488,14 +538,14 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
         const int stateIdx = simbiconState % 2;
     #endif
     // Target angle for swing hip flexion.
-	double swh = m_swh[stateIdx];
+    double swh = m_swh[stateIdx];
     double swhLat = m_swhLat[stateIdx];
-	double tor = m_tor[stateIdx];
+    double tor = m_tor[stateIdx];
     double torLat = m_torLat[stateIdx];
     // Feedback gains for the global angles global angular rates.
-	double cd = 0.2; // global tipping feedback m_cd[stateIdx] TODO
+    double cd = 0.2; // global tipping feedback m_cd[stateIdx] TODO
     double cdLat = 0.2; // TODO  m_cdLat[stateIdx];
-	double cv = m_cv[stateIdx];
+    double cv = m_cv[stateIdx];
     double cvLat = m_cvLat[stateIdx];
 
     // Compute necessary translation-related quantities.
@@ -503,9 +553,8 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
     const SimbodyMatterSubsystem& matter = m_biped.getMatterSubsystem();
 
     // Whole-body mass center, expressed in ground.
-	Vec3 massCenterLoc = matter.calcSystemMassCenterLocationInGround(s);
-    // This is 'v' in Yin, 2007.
-	Vec3 massCenterVel = matter.calcSystemMassCenterVelocityInGround(s);
+    Vec3 massCenterLoc = matter.calcSystemMassCenterLocationInGround(s);
+    Vec3 massCenterVel = matter.calcSystemMassCenterVelocityInGround(s);
 
     // Ankle, expressed in ground.
     const Transform& X = stanceFoot->getInboardFrame(s);
@@ -513,16 +562,18 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
     Vec3 stanceAnkleLoc = stanceFoot->getParentMobilizedBody()
         .findStationLocationInGround(s, stanceAnkleLocInParent);
 
-	Vec3 massCenterLocFromStanceAnkle = massCenterLoc - stanceAnkleLoc;
+    Vec3 massCenterLocFromStanceAnkle = massCenterLoc - stanceAnkleLoc;
 
     // Normals to the sagittal and coronal planes.
     UnitVec3 sagittalNormal = m_biped.getNormalToSagittalPlane(s);
     UnitVec3 coronalNormal = m_biped.getNormalToCoronalPlane(s);
 
-	double d_sag = dot(coronalNormal, massCenterLocFromStanceAnkle);
-	double v_sag = dot(coronalNormal, massCenterVel);
-	double d_cor = dot(sagittalNormal, massCenterLocFromStanceAnkle);
-	double v_cor = dot(sagittalNormal, massCenterVel);
+
+    // Denoted as d and v in Yin, 2007.
+    double sagittalDist = dot(coronalNormal, massCenterLocFromStanceAnkle);
+    double sagittalVel = dot(coronalNormal, massCenterVel);
+    double coronalDist = dot(sagittalNormal, massCenterLocFromStanceAnkle);
+    double coronalVel = dot(sagittalNormal, massCenterVel);
 
     // Compute necessary translation-related quantities.
     // =================================================
@@ -545,17 +596,17 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
         swingHipAdductionRate =
             (cur.swingHipAdduction - prev.swingHipAdduction) / EVENT_PERIOD;
     }
-	if (prev.trunkExtension > -100) {
+    if (prev.trunkExtension > -100) {
         trunkExtensionRate =
             (cur.trunkExtension - prev.trunkExtension) / EVENT_PERIOD;
-	}
-	if (prev.trunkBending > -100) {
+    }
+    if (prev.trunkBending > -100) {
         trunkBendingRate =
             (cur.trunkBending - prev.trunkBending) / EVENT_PERIOD;
-	}
+    }
 
-	// sign change is needed for one of the stance legs in the coronal plane
-	double sign = 1;
+    // sign change is needed for one of the stance legs in the coronal plane
+    double sign = 1;
     if (simbiconState == STATE0 || simbiconState == STATE1) // left stance
         sign = -1;
 
@@ -565,24 +616,25 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
 
     // Balance in the sagittal plane.
     // ==============================
-    double desiredSwingHipFlexionAngle = swh + (cd * d_sag + cv * v_sag);
+    double desiredSwingHipFlexionAngle =
+        swh + (cd * sagittalDist + cv * sagittalVel);
     controls[swing_hip_flexion] = coordPDControlControls(s, swing_hip_flexion,
             hip_flexion_adduction, desiredSwingHipFlexionAngle,
             cur.swingHipFlexion, swingHipFlexionRate);
 
-	// Use the stance hip to control the trunk.
+    // Use the stance hip to control the trunk.
     // ----------------------------------------
     // This is referred to as \tau_{torso} in Yin, 2007.
     double sagittalTorsoTorque =
         kp * (tor - cur.trunkExtension) - kd * trunkExtensionRate;
     double stanceHipFlexionTorque =
         -sagittalTorsoTorque - controls[swing_hip_flexion];
-	controls[stance_hip_flexion] = clamp(stanceHipFlexionTorque, kp);
+    controls[stance_hip_flexion] = clamp(stanceHipFlexionTorque, kp);
 
     // Balance in the coronal plane (transverse).
     // ==========================================
     double desiredSwingHipAdductionAngle =
-        swhLat + (cdLat * d_cor + cvLat * v_cor);
+        swhLat + (cdLat * coronalDist + cvLat * coronalVel);
     swingHipAdductionTorque =
         + kp * (desiredSwingHipAdductionAngle - cur.swingHipAdduction)
         - kd * swingHipAdductionRate;
@@ -595,18 +647,13 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
         sign * (kp * (torLat - cur.trunkBending) - kd * trunkBendingRate);
     stanceHipAdductionTorque =
         coronalTorsoTorque - controls[swing_hip_adduction]; // TODO
-	controls[stance_hip_adduction] = clamp(stanceHipAdductionTorque, kp);
+    controls[stance_hip_adduction] = clamp(stanceHipAdductionTorque, kp);
 
 }
 
-void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForces) const
+void SIMBICON::computeControls(const State& s, Vector& controls,
+        Vector& mobForces) const
 {
-#ifdef DROP_LANDING
-	for (int i = 0; i < controls.size(); i++)
-			controls[i] = 0.0;
-	return;
-#else
-
     const SIMBICONState simbiconState = getSIMBICONState(s);
 
     // For most joints, track target theta of 0.0 degrees.
@@ -708,18 +755,9 @@ void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForc
         coordPDControl(s, Biped::ankle_r_dorsiflexion, ankle_flexion, 0.0, mobForces);
     }
 
-	if (simbiconState != NOT_IN_STATE_MACHINE) {
-		fillInHipJointControls(s, controls);
+    if (simbiconState != NOT_IN_STATE_MACHINE) {
+        fillInHipJointControls(s, controls);
     }
-
-    // TODO can I remove this?
-	Vec3 com = m_biped.getMatterSubsystem().calcSystemMassCenterLocationInGround(s);
-	if (com[1] < 0.7) {
-		for (int i = 0; i < controls.size(); i++)
-			controls[i] = 0.0;
-	}
-	return;
-#endif
 }
 
 Vec3 projectionOntoPlane(const Vec3& vecToProject,
@@ -728,7 +766,7 @@ Vec3 projectionOntoPlane(const Vec3& vecToProject,
 
 void SIMBICON::updateGlobalAngles(const State& s)
 {
-	const SIMBICONState simbiconState = getSIMBICONState(s);
+    const SIMBICONState simbiconState = getSIMBICONState(s);
 
     // Only compute angles if we have entered the state machine.
     if (simbiconState == NOT_IN_STATE_MACHINE) return;
@@ -813,7 +851,7 @@ void SIMBICON::updateGlobalAngles(const State& s)
 
     // Global trunk angles (well, actually, pelvis angles).
     // ====================================================
-	const MobilizedBody& pelvis = m_biped.getBody(Biped::pelvis);
+    const MobilizedBody& pelvis = m_biped.getBody(Biped::pelvis);
 
     // Directed proximally.
     UnitVec3 pelvisAxialDir(pelvis.getBodyRotation(s).y());
@@ -846,42 +884,6 @@ void SIMBICON::updateGlobalAngles(const State& s)
     m_global_angles_file << s.getTime() << " " << coronalTorsoTorque << " " << swingHipAdductionTorque << " " << stanceHipAdductionTorque << " " << " " << cur.swingHipAdduction << std::endl;
 }
 
-/* TODO
-        // Translation-related quantities.
-        // -------------------------------
-
-        // Whole-body mass center, expressed in ground.
-        const Vec3 massCenterLoc = matter.calcSystemMassCenterLocationInGround(s);
-        // This is 'v' in Yin, 2007.
-        const Vec3 massCenterVel = matter.calcSystemMassCenterVelocityInGround(s);
-
-        // Ankle, expressed in ground.
-        const Transform& X = stanceFoot->getInboardFrame(s);
-        Vec3 stanceAnkleLocInParent = X.p();
-        Vec3 stanceAnkleLoc = stanceFoot->getParentMobilizedBody()
-            .findStationLocationInGround(s, stanceAnkleLocInParent);
-
-        // Displacement of whole-body COM from ankle, expressed in ground.
-        // This is called 'd' in Yin, 2007.
-        Vec3 massCenterLocFromStanceAnkle = massCenterLoc - stanceAnkleLoc;
-
-        // Normals to the sagittal and coronal planes.
-        UnitVec3 sagittalNormal = m_biped.getNormalToSagittalPlane(s);
-        UnitVec3 coronalNormal = m_biped.getNormalToCoronalPlane(s);
-
-        // Projection of 'd' and 'v' into the forward / sagittal and lateral /
-        // coronal planes.  We apply balance control separately for these two
-        // planes.
-        Real massCenterLocFromStanceAnkleForwardMeasure =
-            dot(coronalNormal, massCenterLocFromStanceAnkle);
-        Real massCenterVelFromStanceAnkleForwardMeasure =
-            dot(coronalNormal, massCenterVel);
-        Real massCenterLocFromStanceAnkleLateralMeasure =
-            dot(sagittalNormal, massCenterLocFromStanceAnkle);
-        Real massCenterVelFromStanceAnkleLateralMeasure =
-            dot(sagittalNormal, massCenterVel);
-            */
-
 void SIMBICON::updateSIMBICONState(const State& s) const
 {
     Real lForce, rForce;
@@ -889,10 +891,8 @@ void SIMBICON::updateSIMBICONState(const State& s) const
     const bool lContact = (lForce > 0);
     const bool rContact = (rForce > 0);
 
-
-#ifndef DROP_LANDING
-	const SIMBICONState simbiconState = getSIMBICONState(s);
-	const Real duration = s.getTime() - getSIMBICONStateStartTime(s);
+    const SIMBICONState simbiconState = getSIMBICONState(s);
+    const Real duration = s.getTime() - getSIMBICONStateStartTime(s);
 
     // simbiconState stateIdx
     // ------------- --------
@@ -961,36 +961,30 @@ void SIMBICON::updateSIMBICONState(const State& s) const
             }
             break;
     }
-
-#endif
 }
 
-SimbiconStateHandler::SimbiconStateHandler(Biped& model, SIMBICON& simctrl,
-    Real interval)
-        : PeriodicEventHandler(interval), _model(model), _simctrl(simctrl) {
-	}
+SimbiconStateHandler::SimbiconStateHandler(Biped& biped, SIMBICON& simctrl,
+        Real interval) :
+    PeriodicEventHandler(interval), m_biped(biped), m_simctrl(simctrl) { }
 
-void SimbiconStateHandler::handleEvent(State& s, Real accuracy, bool& shouldTerminate) const
+void SimbiconStateHandler::handleEvent(State& s, Real accuracy, bool&
+        shouldTerminate) const
 {
     shouldTerminate = false;
 
-#ifndef DROP_LANDING
-    _simctrl.updateGlobalAngles(s);
-#endif
+    #ifndef DROP_LANDING
+        m_simctrl.updateGlobalAngles(s);
+    #endif
 }
-
-
-
 
 namespace {
 // This is a periodic event handler that interrupts the simulation on a regular
 // basis to poll the InputSilo for user input.
 class UserInputHandler : public PeriodicEventHandler {
 public:
-    UserInputHandler(Visualizer::InputSilo& silo,
-                     Real                   interval);
-    void handleEvent(State& state, Real accuracy,
-                     bool& shouldTerminate) const OVERRIDE_11;
+    UserInputHandler(Visualizer::InputSilo& silo, Real interval);
+    void handleEvent(State& state, Real accuracy, bool& shouldTerminate) const
+        OVERRIDE_11;
 private:
     Visualizer::InputSilo& m_silo;
 };
@@ -999,8 +993,7 @@ private:
 // basis to poll the InputSilo for user input.
 class OutputReporter : public PeriodicEventReporter {
 public:
-    OutputReporter(const Biped& biped,
-                   Real            interval);
+    OutputReporter(const Biped& biped, Real interval);
     void handleEvent(const State& state) const OVERRIDE_11;
 private:
     const Biped& m_biped;
@@ -1009,8 +1002,10 @@ private:
 // Write interesting integrator info to stdout at end of simulation.
 void dumpIntegratorStats(double startCPU, double startTime,
                          const Integrator& integ);
-}
 
+} // end namespace
+
+// TODO
 class ShowContact : public DecorationGenerator {
 public:
     ShowContact(const Biped& unis, const SIMBICON* simctrl)
@@ -1080,107 +1075,109 @@ istringstream iss(origAsString);
 iss >> orig;
     try {
 
-	double finalTime = 1000;
+        double finalTime = 1.5;
 
-    Biped biped;
-    SimTK::Visualizer                   viz(biped);
-    SimTK::Visualizer::InputSilo* userInput = new Visualizer::InputSilo();
-    viz.addInputListener(userInput);
-    biped.addEventHandler
-       (new UserInputHandler(*userInput, Real(0.1))); //check input every 100ms
+        // Create the model.
+        Biped biped;
 
-    biped.addEventReporter(new OutputReporter(biped, .01));
-    biped.addEventReporter(new Visualizer::Reporter(viz, RealTimeFactor/30));
-    DecorativeText help("Any input to start; ESC to quit");
-    help.setIsScreenText(true);
-    viz.addDecoration(MobilizedBodyIndex(0),Vec3(0),help);
-    biped.updMatterSubsystem().setShowDefaultGeometry(false);
+        // Set up event handling and visualization.
+        SimTK::Visualizer viz(biped);
+        SimTK::Visualizer::InputSilo* userInput = new Visualizer::InputSilo();
+        viz.addInputListener(userInput);
+        biped.addEventHandler(new UserInputHandler(*userInput, Real(0.1)));
+        biped.addEventReporter(new OutputReporter(biped, .01));
+        biped.addEventReporter(new Visualizer::Reporter(viz, RealTimeFactor/30));
+        DecorativeText help("Any input to start; ESC to quit");
+        help.setIsScreenText(true);
+        viz.addDecoration(MobilizedBodyIndex(0), Vec3(0), help);
+        biped.updMatterSubsystem().setShowDefaultGeometry(false);
 
-    // Add the controller.
-    SIMBICON* simctrl = new SIMBICON(biped);
-    Force::Custom simbicon(biped.updForceSubsystem(), simctrl); // takes ownership
+        // Add the controller.
+        SIMBICON* simctrl = new SIMBICON(biped);
+        // Force::Custom takes ownership over simctrl.
+        Force::Custom simbicon(biped.updForceSubsystem(), simctrl);
 
 #ifndef RIGID_CONTACT
-    biped.addEventHandler(new SimbiconStateHandler(biped,*simctrl,
-                                                          EVENT_PERIOD));
+        biped.addEventHandler(
+                new SimbiconStateHandler(biped, *simctrl, EVENT_PERIOD));
 #endif
 
-    State s;
-    biped.initialize(s);
+        // Initialize.
+        State s;
+        biped.initialize(s);
+        biped.realize(s, Stage::Instance);
 
-    /* TODO
-    printf("Act: u\n");
-    for (int i=0; i < NumActuators; ++i) {
-        printf("%2d: %d\n", i, int(biped.getUIndex(Biped::Coordinate(i))));
-    }
-    */
+        /* TODO
+           printf("Act: u\n");
+           for (int i=0; i < NumActuators; ++i) {
+           printf("%2d: %d\n", i, int(biped.getUIndex(Biped::Coordinate(i))));
+           }
+           */
 
-    //biped.toes_r.lockAt(s, .2); biped.toes_l.lockAt(s, .2);
-    //biped.foot_r.lockAt(s, Vec2(.2,0)); biped.foot_l.lockAt(s, Vec2(.2,0));
-    biped.realize(s, Stage::Instance);
+        /* TODO
+           printf("SIMBICON 3D:\n");
+           printf("%d bodies, %d mobilities, -%d constraint equations -%d motions\n",
+           biped.getMatterSubsystem().getNumBodies(), s.getNU(), s.getNMultipliers(),
+           biped.getMatterSubsystem().getKnownUDotIndex(s).size());
+           */
 
-    /* TODO
-    printf("SIMBICON 3D:\n");
-    printf("%d bodies, %d mobilities, -%d constraint equations -%d motions\n",
-        biped.getMatterSubsystem().getNumBodies(), s.getNU(), s.getNMultipliers(),
-        biped.getMatterSubsystem().getKnownUDotIndex(s).size());
-        */
+        // Set the initial configuration of the biped.
+        biped.getBody(Biped::trunk).setQToFitTranslation(s, Vec3(0,1.5,0));
+        biped.getBody(Biped::trunk).setUToFitLinearVelocity(s, Vec3(1,0,0));
 
-    biped.getBody(Biped::trunk).setQToFitTranslation(s, Vec3(0,1.5,0));
-    biped.getBody(Biped::trunk).setUToFitLinearVelocity(s, Vec3(1,0,0));
-    viz.report(s);
+        // TODO #ifdef RIGID_CONTACT
+        viz.addDecorationGenerator(new ShowContact(biped, simctrl));
+        // TODO #endif
 
-// TODO #ifdef RIGID_CONTACT
-    viz.addDecorationGenerator(new ShowContact(biped, simctrl));
-// TODO #endif
-
+        // Create an integrator.
 #ifndef RIGID_CONTACT
-    // Simulate.
-    //CPodesIntegrator integ(biped.system); integ.setOrderLimit(2); integ.setAccuracy(.01);
+        //CPodesIntegrator integ(biped.system); integ.setOrderLimit(2); integ.setAccuracy(.01);
 
-    //RungeKuttaMersonIntegrator integ(biped.system); integ.setAccuracy(1e-3);
-    //RungeKutta2Integrator integ(biped.system); integ.setAccuracy(.1);
-    SemiExplicitEuler2Integrator integ(biped); integ.setAccuracy(0.1);
-    //SemiImplicitEulerIntegrator integ(biped.system, .002);
-    //integ.setConstraintTolerance(.001);
-    //integ.setMaximumStepSize(.005);
-    TimeStepper ts(biped, integ);
+        //RungeKuttaMersonIntegrator integ(biped.system); integ.setAccuracy(1e-3);
+        //RungeKutta2Integrator integ(biped.system); integ.setAccuracy(.1);
+        SemiExplicitEuler2Integrator integ(biped); integ.setAccuracy(0.1);
+        //SemiImplicitEulerIntegrator integ(biped.system, .002);
+        //integ.setConstraintTolerance(.001);
+        //integ.setMaximumStepSize(.005);
+        TimeStepper ts(biped, integ);
 #else
-    SemiExplicitEulerTimeStepper ts(biped);
-    ts.setImpulseSolverType(SemiExplicitEulerTimeStepper::PLUS);
-    ts.setInducedImpactModel(SemiExplicitEulerTimeStepper::Simultaneous);
-    //ts.setConstraintTol(1e-5);
-    ts.setAccuracy(1e-4);
-    ts.setMaxInducedImpactsPerStep(1000);
-    //ts.setRestitutionModel(SemiExplicitEulerTimeStepper::Poisson);
+        SemiExplicitEulerTimeStepper ts(biped);
+        ts.setImpulseSolverType(SemiExplicitEulerTimeStepper::PLUS);
+        ts.setInducedImpactModel(SemiExplicitEulerTimeStepper::Simultaneous);
+        //ts.setConstraintTol(1e-5);
+        ts.setAccuracy(1e-4);
+        ts.setMaxInducedImpactsPerStep(1000);
+        //ts.setRestitutionModel(SemiExplicitEulerTimeStepper::Poisson);
 #endif
-    ts.initialize(s);
-    viz.report(ts.getState());
-    printf("Hit ENTER to simulate ... (ESC to quit)\n");
-    userInput->waitForAnyUserInput(); userInput->clear();
 
-    const double startCPU  = cpuTime(), startTime = realTime();
+        ts.initialize(s);
+        viz.report(ts.getState());
+        userInput->waitForAnyUserInput(); userInput->clear();
 
-    try {
-        ts.stepTo(1.5); // TODO Infinity); // RUN
-        std::cout << "y=" << ts.getState().getY() << std::endl;
-        std::cout << "normRMS: " << (orig - ts.getState().getY()).normRMS() << std::endl;
+        const double startCPU  = cpuTime();
+        const double startTime = realTime();
 
-    } catch (const std::exception& e) {
-        std::cout << "ERROR: " << e.what() << std::endl;
-        biped.realize(ts.getState());
-        std::cout << "y=" << ts.getState().getY() << std::endl;
-        std::cout << "ydot=" << ts.getState().getYDot() << std::endl;
-        throw;
-    }
+        // Simulate.
+        try {
+            ts.stepTo(finalTime);
+            std::cout << "y=" << ts.getState().getY() << std::endl;
+            std::cout << "normRMS: " << (orig - ts.getState().getY()).normRMS() << std::endl;
 
-    // dumpIntegratorStats(startCPU, startTime, integ);
+        } catch (const std::exception& e) {
+            std::cout << "ERROR: " << e.what() << std::endl;
+            biped.realize(ts.getState());
+            std::cout << "y=" << ts.getState().getY() << std::endl;
+            std::cout << "ydot=" << ts.getState().getYDot() << std::endl;
+            throw;
+        }
+
+        // dumpIntegratorStats(startCPU, startTime, integ);
 
     } catch (const std::exception& e) {
         std::cout << "ERROR: " << e.what() << std::endl;
         return 1;
     }
-	return 0;
+    return 0;
 }
 
 
@@ -1227,7 +1224,7 @@ void dumpIntegratorStats(double startCPU, double startTime,
     std::cout << "DONE: Simulated " << integ.getTime() << " seconds in " <<
         realTime()-startTime << " elapsed s, CPU="<< cpuTime()-startCPU << "s\n";
     #ifdef ANIMATE
-    printf("***CAUTION: CPU time not accurate when animation is enabled.\n");
+        printf("***CAUTION: CPU time not accurate when animation is enabled.\n");
     #endif
 
     const int evals = integ.getNumRealizations();
