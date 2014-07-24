@@ -142,14 +142,7 @@ public:
     /// as determined by `coord`.
     void addInForce(const Coordinate coord, const Real force,
             Vector& mobForces) const {
-        Real forceAccountingForSymmetry = force;
-        // TODO
-        //if (coord == hip_r_adduction) {
-        //    // Negate so that we actually apply an adduction torque (not an
-        //    // abduction torque).
-        //    forceAccountingForSymmetry *= -1;
-        //}
-        mobForces[getUIndex(coord)] += forceAccountingForSymmetry;
+        mobForces[getUIndex(coord)] += force;
     }
 
     /// The pelvis' z direction (which points to the biped's right) projected

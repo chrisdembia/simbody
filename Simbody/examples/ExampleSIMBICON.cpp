@@ -343,6 +343,9 @@ private:
 
     // TODO
     friend SimbiconStateHandler;
+    mutable double coronalTorsoTorque;
+    mutable double swingHipAdductionTorque;
+    mutable double stanceHipAdductionTorque;
 
     // TODO
     ofstream m_global_angles_file;
@@ -580,18 +583,18 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
     // ==========================================
     double desiredSwingHipAdductionAngle =
         swhLat + (cdLat * d_cor + cvLat * v_cor);
-    double swingHipAdductionTorque =
+    swingHipAdductionTorque =
         + kp * (desiredSwingHipAdductionAngle - cur.swingHipAdduction)
         - kd * swingHipAdductionRate;
-    controls[swing_hip_adduction] = sign*(clamp( swingHipAdductionTorque, kp));
+    controls[swing_hip_adduction] = clamp( swingHipAdductionTorque, kp);
     //    coordPDControlControls(s, swing_hip_adduction,
     //        hip_flexion_adduction, desiredSwingHipAdductionAngle, cur.swingHipAdduction, swingHipAdductionRate);
     // TODO abd/add
 
-    double coronalTorsoTorque =
-        sign * (kp * (torLat - cur.trunkBending) - kd * trunkBendingRate);
-    double stanceHipAdductionTorque =
-        coronalTorsoTorque - controls[swing_hip_adduction]; // TODO
+    coronalTorsoTorque =
+        kp * (torLat - cur.trunkBending) - kd * trunkBendingRate;
+    stanceHipAdductionTorque =
+        -sign * coronalTorsoTorque - controls[swing_hip_adduction]; // TODO
 	controls[stance_hip_adduction] = clamp(stanceHipAdductionTorque, kp);
 
 }
@@ -739,22 +742,21 @@ void SIMBICON::updateGlobalAngles(const State& s)
     // =============================
     const MobilizedBody* stanceFoot;
     const MobilizedBody* swingThigh;
-    // Ensures that, e.g., the global hip adduction angle is always adduction
-    // and not abduction.
-    double sense = -1.0; // TODO
+    // Used to ensure swingHipAdduction is never *ab*duction.
+    double sense;
     if (simbiconState == STATE0 || simbiconState == STATE1)
     {
         // Left leg is in stance.
         stanceFoot = &m_biped.getBody(Biped::foot_l);
         swingThigh = &m_biped.getBody(Biped::thigh_r);
-// TODO        sense = 1.0;
+        sense = -1.0;
     }
     else if (simbiconState == STATE2 || simbiconState == STATE3)
     {
         // Right leg is in stance.
         stanceFoot = &m_biped.getBody(Biped::foot_r);
         swingThigh = &m_biped.getBody(Biped::thigh_l);
-        sense = -1.0;
+        sense = 1.0;
     }
     else SimTK_THROW(Exception::Base);
 
@@ -772,9 +774,8 @@ void SIMBICON::updateGlobalAngles(const State& s)
     // This vector is in sagittal plane, and is parallel to the ground.
     UnitVec3 sagittalHorizontal(cross(up, sagittalNormal));
 
-    // A horizontal vector in the coronal plane. Directed to the right if
-    // right leg is in stance, to the left if the left leg is in stance.
-    UnitVec3 coronalHorizontal(sense * cross(up, coronalNormal));
+    // A horizontal vector in the coronal plane. Directed to the right.
+    UnitVec3 coronalHorizontal(-cross(up, coronalNormal));
 
     // Global hip angles.
     // ==================
@@ -802,8 +803,12 @@ void SIMBICON::updateGlobalAngles(const State& s)
             projectionOntoPlane(swingThighAxialDir, coronalNormal));
 
     // Angle between the thigh axis and the vertical, in the coronal plane.
+    // When the left leg is in swing, and the leg is adducted, this is
+    // positive. When the right leg is in swing, we are still using a rightward
+    // coronal horizontal. If we didn't negate when the right leg is in swing,
+    // this angle would be *negative* for adduction.
     cur.swingHipAdduction =
-        acos(dot(coronalSwingThighAxialDir, coronalHorizontal)) - Pi / 2;
+        sense * (acos(dot(coronalSwingThighAxialDir, coronalHorizontal)) - Pi / 2);
     // TODO change sign for when left leg is in swing.
 
     // Global trunk angles (well, actually, pelvis angles).
@@ -837,7 +842,8 @@ void SIMBICON::updateGlobalAngles(const State& s)
     cur.trunkBending =
         acos(dot(coronalPelvisAxialDir, coronalHorizontal)) - Pi/2;
 
-    m_global_angles_file << s.getTime() << " " << cur.swingHipAdduction << std::endl;
+    // TODO
+    m_global_angles_file << s.getTime() << " " << simctrl->coronalTorsoTorque << " " << simctrl->swingHipAdductionTorque << " " << simctrl->stanceHipAdductionTorque << " " << std::endl;
 }
 
 /* TODO
