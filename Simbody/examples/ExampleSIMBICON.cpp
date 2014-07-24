@@ -310,10 +310,6 @@ private:
     // TODO get rid of this.
 	void getSagCorNormals( const SimTK::State& s,
 		SimTK::Vec3& sagN, SimTK::Vec3& corN ) const;
-	void getUpVectorInGround( const SimTK::State& s, const SimTK::MobilizedBody& b,
-		SimTK::Vec3& up ) const;
-	void getFrontVectorInGround( const SimTK::State& s, const SimTK::MobilizedBody& b,
-		SimTK::Vec3& up ) const;
 	void fillInHipJointControls( const SimTK::State& s,
 		SimTK::Vector& controls ) const;
 
@@ -447,16 +443,6 @@ void SIMBICON::getSagCorNormals(const State& s, Vec3& sagN, Vec3& corN ) const {
 	sagN = sagN.normalize();
 	corN[YAxis] = 0; // project to y==0
 	corN = corN.normalize();
-}
-
-void SIMBICON::getUpVectorInGround( const State& s, const MobilizedBody& b,
-	Vec3& up ) const {
-	up = Vec3(b.getBodyRotation(s).y());
-}
-
-void SIMBICON::getFrontVectorInGround( const State& s, const MobilizedBody& b,
-	Vec3& front ) const {
-	front = Vec3(b.getBodyRotation(s).x());
 }
 
 void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const {
@@ -690,8 +676,7 @@ Vec3 projectionOntoPlane(const Vec3& vecToProject,
                          const UnitVec3& normalToPlane)
 { return vecToProject - dot(vecToProject, normalToPlane) * normalToPlane; }
 
-void SIMBICON::
-updateGlobalAngles(const State& s)
+void SIMBICON::updateGlobalAngles(const State& s)
 {
 	const SIMBICONState simbiconState = getSIMBICONState(s);
 
