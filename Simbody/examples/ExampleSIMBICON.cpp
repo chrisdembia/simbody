@@ -558,12 +558,14 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
     // ==============================
     double desiredSwingHipFlexionAngle = swh + (cd * d_sag + cv * v_sag);
     controls[swing_hip_flexion] = coordPDControlControls(s, swing_hip_flexion,
-            hip_flexion_adduction, desiredSwingHipFlexionAngle, cur.swingHipFlexion,
-            swingHipFlexionRate);
+            hip_flexion_adduction, desiredSwingHipFlexionAngle,
+            cur.swingHipFlexion, swingHipFlexionRate);
 
-	// Use the stance hip to control the trunk
+	// Use the stance hip to control the trunk.
+    // ----------------------------------------
     // This is referred to as \tau_{torso} in Yin, 2007.
-    double sagittalTorsoTorque = kp*(0. - cur.trunkExtension) - kd*trunkExtensionRate;
+    double sagittalTorsoTorque =
+        kp*(0. - cur.trunkExtension) - kd*trunkExtensionRate;
     double stanceHipFlexionTorque =
         -sagittalTorsoTorque - controls[swing_hip_flexion];
 	controls[stance_hip_flexion] = clamp(stanceHipFlexionTorque, kp);
@@ -580,9 +582,11 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
     //        hip_flexion_adduction, desiredSwingHipAdductionAngle, cur.swingHipAdduction, swingHipAdductionRate);
     // TODO abd/add
 
-	controls[stance_hip_adduction] = sign*(kp*(0. - cur.trunkBending) - kd*trunkBendingRate);
-	controls[stance_hip_adduction] -= controls[swing_hip_adduction];
-	controls[stance_hip_adduction] = clamp(controls[stance_hip_adduction], kp);
+    double coronalTorsoTorque =
+        sign*(kp*(0. - cur.trunkBending) - kd*trunkBendingRate);
+    double stanceHipAdductionTorque =
+        coronalTorsoTorque - controls[swing_hip_adduction]; // TODO
+	controls[stance_hip_adduction] = clamp(stanceHipAdductionTorque, kp);
 
 }
 
