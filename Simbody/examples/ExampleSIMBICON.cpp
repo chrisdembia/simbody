@@ -40,7 +40,7 @@ using namespace SimTK;
 // TODO USE_GLOBAL_HIPROT
 // Drop landing doesn't use controller so you can run with models other than
 // the humanoid upon which the controller depends.
-//#define DROP_LANDING
+#define DROP_LANDING
 
 namespace { // file-scope symbols
 
@@ -230,16 +230,19 @@ private:
     /// proportional-derivative control law that tracks thetad.
     /// The force is added into the appropriate place in `mobForces.`
     /// For convenience / inspection, the force is returned as well.
+    /// By default, the current coordinate value and speed are obtained from
+    /// the state; these can be overridden by specifying q and u.
     // TODO
     Real coordPDControl(const State& s,
             const Biped::Coordinate coord, const GainGroup gainGroup,
-            const Real thetad, Vector& mobilityForces) const
+            const Real thetad, Vector& mobilityForces,
+            Real q = NaN, Real u = NaN) const
     {
         // Prepare quantities.
         Real kp = m_proportionalGains.at(gainGroup);
         Real kd = m_derivativeGains.at(gainGroup);
-        Real q = m_biped.getQ(s, coord);
-        Real u = m_biped.getU(s, coord);
+        if (isNaN(q)) q = m_biped.getQ(s, coord);
+        if (isNaN(u)) u = m_biped.getU(s, coord);
 
         // PD control law:
         Real force = clamp(kp * (thetad - q) - kd * u, kp);
@@ -252,13 +255,13 @@ private:
     // TODO
     Real coordPDControlControls(const State& s,
             const Biped::Coordinate coord, const GainGroup gainGroup,
-            const Real thetad) const
+            const Real thetad, Real q = NaN, Real u = NaN) const
     {
         // Prepare quantities.
         Real kp = m_proportionalGains.at(gainGroup);
         Real kd = m_derivativeGains.at(gainGroup);
-        Real q = m_biped.getQ(s, coord);
-        Real u = m_biped.getU(s, coord);
+        if (isNaN(q)) q = m_biped.getQ(s, coord);
+        if (isNaN(u)) u = m_biped.getU(s, coord);
 
         // PD control law:
         Real force = clamp(kp * (thetad - q) - kd * u, kp);
@@ -551,14 +554,19 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
     double kp, kd; // position, derivative gains for hip flex/adduction
     calcGainsFromStrength(hip_flexion_adduction, kp, kd);
 
-    double desiredSwingHipFlexionAngle = swh + (cd*d_sag + cv*v_sag);
-    double swingHipFlexionTorque =
-        + kp * (desiredSwingHipFlexionAngle - cur.swingHipFlexion)
-        - kd * swingHipFlexionRate;
-    controls[swing_hip_flexion] = clamp(swingHipFlexionTorque, kp);
-    controls[swing_hip_adduction] = sign*(clamp(  kp*(swhLat + (cdLat*d_cor +
-                        cvLat*v_cor) - cur.swingHipAbduction) -
-                kd*swingHipAbductionRate, kp));
+    double desiredSwingHipFlexionAngle = swh + (cd * d_sag + cv * v_sag);
+    controls[swing_hip_flexion] = coordPDControlControls(s, swing_hip_flexion,
+            hip_flexion_adduction, desiredSwingHipFlexionAngle, cur.swingHipFlexion,
+            swingHipFlexionRate);
+
+    double desiredSwingHipAdductionAngle =
+        swhLat + (cdLat * d_cor + cvLat * v_cor);
+    double swingHipAdductionTorque =
+        + kp * (desiredSwingHipAdductionAngle - cur.swingHipAbduction)
+        - kd * swingHipAbductionRate;
+    controls[swing_hip_adduction] = sign*(clamp( swingHipAdductionTorque, kp));
+    //TODO    coordPDControlControls(s, swing_hip_adduction,
+    //        hip_flexion_adduction, desiredSwingHipAdductionAngle, cur.swingHipAbduction, swingHipAbductionRate);
     // TODO abd/add
 
 	// use stance hip to control the trunk
@@ -1088,7 +1096,9 @@ iss >> orig;
         */
 
     biped.getBody(Biped::trunk).setQToFitTranslation(s, Vec3(0,1.5,0));
-    biped.getBody(Biped::trunk).setUToFitLinearVelocity(s, Vec3(1,0,0));
+    // TODO biped.getBody(Biped::trunk).setUToFitLinearVelocity(s, Vec3(1,0,0));
+    biped.getBody(Biped::thigh_r).setOneQ(s, 1, 0.5);
+    biped.getBody(Biped::thigh_l).setOneQ(s, 1, 0.5);
     viz.report(s);
 
 // TODO #ifdef RIGID_CONTACT

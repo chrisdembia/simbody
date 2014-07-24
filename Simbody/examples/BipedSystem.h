@@ -298,7 +298,7 @@ Biped::Biped()
     //--------------------------------------------------------------------------
 
     // Gravity.
-    Force::Gravity(m_forces, m_matter, -YAxis, 9.8066);
+// TODO    Force::Gravity(m_forces, m_matter, -YAxis, 9.8066);
 
     // Contact with the ground.
     m_matter.updGround().updBody().addContactSurface(
