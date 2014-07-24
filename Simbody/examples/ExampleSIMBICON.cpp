@@ -491,9 +491,9 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
     UnitVec3 sagittalNormal = m_biped.getNormalToSagittalPlane(s);
     UnitVec3 coronalNormal = m_biped.getNormalToCoronalPlane(s);
 
-	double d_sag = dot(coronalNormal, massCenterLoc);
+	double d_sag = dot(coronalNormal, massCenterLocFromStanceAnkle);
 	double v_sag = dot(coronalNormal, massCenterVel);
-	double d_cor = dot(sagittalNormal, massCenterLoc);
+	double d_cor = dot(sagittalNormal, massCenterLocFromStanceAnkle);
 	double v_cor = dot(sagittalNormal, massCenterVel);
 
     // simbiconState stateIdx
