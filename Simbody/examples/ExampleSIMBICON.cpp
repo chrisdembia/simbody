@@ -91,6 +91,7 @@ public:
     ///   * cvLat: velocity balance feedback coefficient, lateral (for 3D gait)
     ///   * tor: torso target angle
     ///   * swh: swing-hip target angle
+    ///   * swhLat: swing-hip target angle, lateral (for 3D gait)
     ///   * swk: swing-knee target angle
     ///   * swa: swing-ankle target angle
     ///   * stk: stance-knee target angle
@@ -107,6 +108,7 @@ public:
             Vec2 cvLat=Vec2(0.2, 0.2),
             Vec2 tor=Vec2(0.0, 0.0),
             Vec2 swh=Vec2(0.5, -0.1),
+            Vec2 swhLat=Vec2(0.0, 0.0),
             Vec2 swk=Vec2(-1.1, -0.05),
             Vec2 swa=Vec2(0.6, 0.15),
             Vec2 stk=Vec2(-0.05, -0.1),
@@ -283,6 +285,7 @@ private:
     const Vec2 m_cvLat;
     const Vec2 m_tor;
     const Vec2 m_swh;
+    const Vec2 m_swhLat;
     const Vec2 m_swk;
     const Vec2 m_swa;
     const Vec2 m_stk;
@@ -356,12 +359,13 @@ Real criticallyDampedDerivativeGain(Real proportionalGain) {
 SIMBICON::SIMBICON(Biped& biped,
         Real minSIMBICONStateDuration,
         Vec2 deltaT, Vec2 cd, Vec2 cdLat, Vec2 cv,
-        Vec2 cvLat, Vec2 tor, Vec2 swh, Vec2 swk, Vec2 swa, Vec2 stk, Vec2 sta)
+        Vec2 cvLat, Vec2 tor, Vec2 swh, Vec2 swhLat, Vec2 swk, Vec2 swa, Vec2
+        stk, Vec2 sta)
     : m_biped(biped), m_forces(m_biped.getForceSubsystem()),
       m_minSIMBICONStateDuration(minSIMBICONStateDuration),
       m_deltaT(deltaT), m_cd(cd),
       m_cdLat(cdLat), m_cv(cv), m_cvLat(cvLat), m_tor(tor), m_swh(swh),
-      m_swk(swk), m_swa(swa), m_stk(stk), m_sta(sta)
+      m_swhLat(swhLat), m_swk(swk), m_swa(swa), m_stk(stk), m_sta(sta)
 
 {
     // TODO
@@ -468,14 +472,19 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
     // 2             0
     // 3             1
     // TODO move stateIdx into a subfunction.
-#ifdef TWO_STATE
+    #ifdef TWO_STATE
         const int stateIdx = 0;
-#else
+    #else
         const int stateIdx = simbiconState % 2;
-#endif
-	double thetad = m_swh[stateIdx];
+    #endif
+    // Target angle for swing hip flexion.
+	double swh = m_swh[stateIdx];
+    double swhLat = m_swhLat[stateIdx];
+    // Feedback gains for the global angles global angular rates.
 	double cd = 0.2; // global tipping feedback m_cd[stateIdx] TODO
+    double cdLat = 0.2; // TODO  m_cdLat[stateIdx];
 	double cv = m_cv[stateIdx];
+    double cvLat = m_cvLat[stateIdx];
 
     // Compute necessary translation-related quantities.
     // =================================================
@@ -528,7 +537,7 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
         trunkExtensionRate =
             (cur.trunkExtension - prev.trunkExtension) / EVENT_PERIOD;
 	}
-	if (prev.trunkBendingRate > -100) {
+	if (prev.trunkBending > -100) {
         trunkBendingRate =
             (cur.trunkBending - prev.trunkBending) / EVENT_PERIOD;
 	}
@@ -542,10 +551,14 @@ void SIMBICON::fillInHipJointControls( const State& s, Vector& controls ) const 
     double kp, kd; // position, derivative gains for hip flex/adduction
     calcGainsFromStrength(hip_flexion_adduction, kp, kd);
 
-	controls[swing_hip_flexion] = clamp(  kp*(thetad + (cd*d_sag + cv*v_sag) - cur.swingHipFlexion)
-                          - kd*swingHipFlexionRate, kp);
-	controls[swing_hip_adduction] = sign*(clamp(  kp*(0.0 + (cd*d_cor + cv*v_cor) - cur.swingHipAbduction)
-                                 - kd*swingHipAbductionRate, kp));
+    double desiredSwingHipFlexionAngle = swh + (cd*d_sag + cv*v_sag);
+    double swingHipFlexionTorque =
+        + kp * (desiredSwingHipFlexionAngle - cur.swingHipFlexion)
+        - kd * swingHipFlexionRate;
+    controls[swing_hip_flexion] = clamp(swingHipFlexionTorque, kp);
+    controls[swing_hip_adduction] = sign*(clamp(  kp*(swhLat + (cdLat*d_cor +
+                        cvLat*v_cor) - cur.swingHipAbduction) -
+                kd*swingHipAbductionRate, kp));
     // TODO abd/add
 
 	// use stance hip to control the trunk
@@ -642,11 +655,11 @@ void SIMBICON::computeControls(const State& s, Vector& controls, Vector& mobForc
         // 1             1
         // 2             0
         // 3             1
-#ifdef TWO_STATE
-        const int stateIdx = 0;
-#else
-        const int stateIdx = simbiconState % 2;
-#endif
+        #ifdef TWO_STATE
+            const int stateIdx = 0;
+        #else
+            const int stateIdx = simbiconState % 2;
+        #endif
 
         coordPDControl(s, swing_knee_extension, knee, m_swk[stateIdx],
                 mobForces);
