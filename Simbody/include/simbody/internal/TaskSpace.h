@@ -259,6 +259,26 @@ public:
     { return m_indices; }
     const Array_<Vec3>& getStations() const { return m_stations; }
 
+    /// @name Access the TaskSpaceQuantity's, using shorthand names.
+    /// @{
+    const Jacobian& J() const { return getJacobian(); }
+    const JacobianTranspose& JT() const
+    { return getJacobianTranspose(); }
+    const Inertia& Lambda() const { return getInertia(); }
+    const InertiaInverse& LambdaInv() const { return getInertiaInverse(); }
+    const DynamicallyConsistentJacobianInverse& JBar() const
+    { return getDynamicallyConsistentJacobianInverse(); }
+    const DynamicallyConsistentJacobianInverseTranspose& JBarT() const
+    { return getDynamicallyConsistentJacobianInverseTranspose(); }
+    const InertialForces mu() const { return getInertialForces(); }
+    const Gravity p() const { return getGravity(); }
+    const NullspaceProjection& N() const { return getNullspaceProjection(); }
+    const NullspaceProjectionTranspose NT() const
+    { return getNullspaceProjectionTranspose(); }
+    /// @}
+
+    /// @name Access the TaskSpaceQuantity's, using the full names.
+    /// @{
     const Jacobian& getJacobian() const { return m_jacobian; }
     const JacobianTranspose& getJacobianTranspose() const
     { return m_jacobianTranspose; }
@@ -276,23 +296,7 @@ public:
     { return m_nullspace; }
     const NullspaceProjectionTranspose& getNullspaceProjectionTranspose() const
     { return m_nullspaceTranspose; }
-
-    // shorthands
-
-    const Jacobian& J() const { return getJacobian(); }
-    const JacobianTranspose& JT() const
-    { return getJacobianTranspose(); }
-    const Inertia& Lambda() const { return getInertia(); }
-    const InertiaInverse& LambdaInv() const { return getInertiaInverse(); }
-    const DynamicallyConsistentJacobianInverse& JBar() const
-    { return getDynamicallyConsistentJacobianInverse(); }
-    const DynamicallyConsistentJacobianInverseTranspose& JBarT() const
-    { return getDynamicallyConsistentJacobianInverseTranspose(); }
-    const InertialForces mu() const { return getInertialForces(); }
-    const Gravity p() const { return getGravity(); }
-    const NullspaceProjection& N() const { return getNullspaceProjection(); }
-    const NullspaceProjectionTranspose NT() const
-    { return getNullspaceProjectionTranspose(); }
+    /// @}
 
     // task-space F = Lambda F* + mu + p
     // TODO does not use mu yet.

@@ -99,7 +99,11 @@ public:
             Array_<DecorativeGeometry>& geometry) const OVERRIDE_11
     {
         geometry.push_back(DecorativeSphere(0.02)
-                .setTransform(getTarget())
+                .setTransform(m_desiredLeftPosInGround)
+                .setColor(m_targetColor));
+
+        geometry.push_back(DecorativeSphere(0.02)
+                .setTransform(m_desiredRightPosInGround)
                 .setColor(m_targetColor));
 
         const MobilizedBody& leftHand = m_system.getBody(Humanoid::hand_l);
@@ -230,6 +234,24 @@ void ReachingAndGravityCompensation::calcForce(
     p1.setState(state);
     p2.setState(state);
 
+    // Floating base calculations.
+    // ---------------------------
+    Matrix S(nu, nu);
+    S = 1;
+    S.diag()(0, 6) = 0;
+    Matrix AsysInv; m_matter.calcMInv(state, AsysInv);
+    Matrix Ainv = S * AsysInv * (~S);
+    Matrix A = Ainv.invert();
+    Matrix Sbar = AsysInv * (~S) * A;
+    Vector g = (~Sbar) * p1.g();
+
+    Matrix Jsys = p1.J().value();
+    Matrix J = Jsys * Sbar;
+    Matrix Lambda = (J * Ainv * (~J)).invert();
+    Matrix Jbar = Ainv * (~J) * Lambda;
+    Matrix N = 1 - Jbar * J;
+    Vector p = (~Jbar) * g;
+
     // Compute control law in task space (F*).
     // ---------------------------------------
     Vec3 xd_des(0);
@@ -240,6 +262,7 @@ void ReachingAndGravityCompensation::calcForce(
     const MobilizedBody& leftHand = m_system.getBody(Humanoid::hand_l);
     leftHand.findStationLocationAndVelocityInGround(state,
             m_stationLocationInHand, x1, x1d);
+
     Vec3 x2, x2d;
     const MobilizedBody& rightHand = m_system.getBody(Humanoid::hand_r);
     rightHand.findStationLocationAndVelocityInGround(state,
@@ -249,20 +272,26 @@ void ReachingAndGravityCompensation::calcForce(
     Vec3 Fstar1 = xdd_des + kd * (xd_des - x1d) + kp * (x1_des - x1);
     Vector Fstar2(xdd_des + kd * (xd_des - x2d) + kp * (x2_des - x2));
 
-    // Compute task-space force that achieves the task-space control.
-    // F = Lambda Fstar + p
-    Vector F1 = p1.Lambda() * Fstar1 + /* TODO p1.mu() + */ p1.p();
-    Vector F2 = p2.calcInverseDynamics(Fstar2);
+    // TODO
+    Vector F = Lambda * Vector(Fstar1) + p;
+    mobilityForces = (~J) * F + (~N) * -state.getU();
+    // TODO std::cout << mobilityForces << std::endl;
 
-    // Combine the reaching task with the gravity compensation and nullspace
-    // damping.
-    // Gamma = J1T F1 + N1T J1T F2 + N1T N2T (g - k u)
-    const Vector& u = state.getU();
-    const double& k = m_dampingGain;
-    mobilityForces = p1.JT() * F1 + p1.NT() * (
-                        p2.JT() * F2 + p2.NT() * (
-                            p1.g() - k * u)
-                        );
+//    TODO
+//    // Compute task-space force that achieves the task-space control.
+//    // F = Lambda Fstar + p
+//    Vector F1 = p1.Lambda() * Fstar1 + /* TODO p1.mu() + */ p1.p();
+//    Vector F2 = p2.calcInverseDynamics(Fstar2);
+//
+//    // Combine the reaching task with the gravity compensation and nullspace
+//    // damping.
+//    // Gamma = J1T F1 + N1T J1T F2 + N1T N2T (g - k u)
+//    const Vector& u = state.getU();
+//    const double& k = m_dampingGain;
+//    mobilityForces = p1.JT() * F1 + p1.NT() * (
+//                        p2.JT() * F2 + p2.NT() * (
+//                            p1.g() - k * u)
+//                        );
 
 //    TODO what would this look like with states as arguments everywhere?
 //    // Compute task-space force that achieves the task-space control.
@@ -380,7 +409,7 @@ int main(int argc, char **argv)
 
         // Set up visualizer and event handlers.
         SimTK::Visualizer viz(system);
-        viz.setMode(Visualizer::RealTime);
+        // TODO viz.setMode(Visualizer::RealTime);
         viz.setRealTimeScale(realTimeScale);
         viz.setShowFrameRate(true);
         viz.setShowSimTime(true);

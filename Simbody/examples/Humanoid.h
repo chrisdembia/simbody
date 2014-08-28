@@ -640,7 +640,7 @@ Humanoid::Humanoid()
     // Trunk.
     // ------
     m_bodies[trunk] = MobilizedBody::Free(
-        m_matter.updGround(), Vec3(0, 1.5, 0),
+        m_matter.updGround(), Vec3(0, 1.35, 0),
         trunkInfo,          Vec3(0));
 
     // Neck angles are: q0=extension (about z), q1=bending (x), q2=rotation (y).
