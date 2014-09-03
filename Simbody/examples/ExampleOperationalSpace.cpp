@@ -274,7 +274,7 @@ void ReachingAndGravityCompensation::calcForce(
 
     // TODO
     Vector F = Lambda * Vector(Fstar1) + p;
-    mobilityForces = (~J) * F + (~N) * -state.getU();
+    mobilityForces = (~J) * F + (~N) * (-100 * state.getQ() - state.getU());
     // TODO std::cout << mobilityForces << std::endl;
 
 //    TODO
