@@ -26,6 +26,43 @@
 using namespace SimTK;
 using namespace std;
 
+class DoublePendulumOnCart : public MultibodySystem {
+public:
+    DoublePendulumOnCart() : m_matter(*this), m_forces(*this) {
+        const Real m1 = 1.0;
+        const Real m2 = 1.0;
+        const Real m3 = 1.0;
+        const Real L2 = 1.0;
+        const Real L3 = 1.0;
+
+        Force::Gravity(m_forces, m_matter, -YAxis, 9.8);
+
+        Body::Rigid cartInfo(MassProperties(m1, 0, Inertia(0)));
+        Body::Rigid link2Info(MassProperties(m2, 0, Inertia(0)));
+        Body::Rigid link3Info(MassProperties(m3, 0, Inertia(0)));
+
+        Transform cartTransform(Vec3(0)); // TODO Rotation(-0.5 * Pi, YAxis));
+        MobilizedBody::Slider cart(
+                m_matter.Ground(), cartTransform,
+                cartInfo, cartTransform);
+
+        Transform pinTransform(Vec3(0));
+        MobilizedBody::Pin link2(cart, pinTransform, link2Info, pinTransform);
+        MobilizedBody::Pin link3(link2, pinTransform, link3Info, pinTransform);
+
+    }
+
+private:
+    SimbodyMatterSubystem m_matter;
+    GeneralForceSubsystem m_forces;
+
+    const Real m1;
+    const Real m2;
+    const Real m3;
+    const Real L2;
+    const Real L3;
+};
+
 void testTaskSpace() {
 }
 
