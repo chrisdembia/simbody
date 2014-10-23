@@ -78,8 +78,9 @@ do { \
 Real funval = opt.optimize(results); \
 const TestOptimizerSystem& sys = \
     *static_cast<const TestOptimizerSystem*>(&opt.getOptimizerSystem()); \
-SimTK_TEST_EQ_TOL(funval, sys.optimalValue(), tol); \
 SimTK_TEST(vectorsAreEqual(results, sys.optimalParameters(), tol)); \
+std::cout << "f = " << funval << std::endl; \
+SimTK_TEST_EQ_TOL(funval, sys.optimalValue(), tol); \
 } \
 while(false)
 
@@ -143,7 +144,7 @@ void testCigtabOptimum() {
     opt.setAdvancedRealOption("maxTimeFractionForEigendecomposition", 1);
     
     // Optimize!
-    SimTk_TEST_OPT(opt, results, 1e-5);
+    SimTK_TEST_OPT(opt, results, 1e-5);
 }
 
 void testParameterLimits() {
@@ -168,21 +169,21 @@ void testSigmaStepSizeAndAckleyOptimum() {
     // Create optimizer; set settings.
     Optimizer opt(sys, SimTK::CMAES);
     opt.setConvergenceTolerance(1e-12);
-    opt.setMaxIterations(5000);
-    opt.setAdvancedRealOption("seed", 10);
+    opt.setMaxIterations(1000000); //5000);
+    opt.setAdvancedIntOption("seed", 10);
     opt.setAdvancedRealOption("maxTimeFractionForEigendecomposition", 1);
 
     // Default sigma (step size) leaves us in a local minimum.
     // =======================================================
 
-    // Optimize!
-    Real f1 = opt.optimize(results);
+    //// Optimize!
+    //Real f1 = opt.optimize(results);
 
     static const Real TOL = 1e-5;
 
-    // Should end up in the 24.9997 local minimum.
-    Vector expectedLocalMinimum(N, 24.999749);
-    SimTK_TEST(vectorsAreEqual(results, expectedLocalMinimum, TOL, false));
+    //// Should end up in the 24.9997 local minimum.
+    //Vector expectedLocalMinimum(N, 24.999749);
+    //SimTK_TEST(vectorsAreEqual(results, expectedLocalMinimum, TOL, false));
 
     // Can find the optimum with an appropriate step size.
     // ===================================================
@@ -481,21 +482,21 @@ int main() {
 
     // Even though most of the tests use seeds, some tests may fail
     // sporadically. We must run these tests a few times.
-    for (unsigned int i = 0; i < 1; ++i) {
+    for (unsigned int i = 0; i < 100; ++i) {
 
-        SimTK_SUBTEST(testCMAESAvailable);
-        SimTK_SUBTEST(testTwoOrMoreParameters);
-        SimTK_SUBTEST(testMaxIterations);
-        SimTK_SUBTEST(testCigtabOptimum);
+//        SimTK_SUBTEST(testCMAESAvailable);
+//        SimTK_SUBTEST(testTwoOrMoreParameters);
+//        SimTK_SUBTEST(testMaxIterations);
+//        SimTK_SUBTEST(testCigtabOptimum);
         // TODO        testParameterLimits();
         SimTK_SUBTEST(testSigmaStepSizeAndAckleyOptimum);
         // TODO        testDropWaveOptimumLambdaMaxFunEvals();
-        SimTK_SUBTEST(testSeed);
-        // TODO        testRestart();
-        SimTK_SUBTEST(testConvergenceTolerance);
-        // TODO        testRosenbrock();
-        // TODO        testSchwefel();
-        SimTK_SUBTEST(testEasom);
+//        SimTK_SUBTEST(testSeed);
+//        // TODO        testRestart();
+//        SimTK_SUBTEST(testConvergenceTolerance);
+//        // TODO        testRosenbrock();
+//        // TODO        testSchwefel();
+//        SimTK_SUBTEST(testEasom);
         // TODO SimTK_SUBTEST(testInfeasibleInitialPoint);
     }
 

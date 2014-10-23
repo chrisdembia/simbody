@@ -36,7 +36,7 @@ Optimizer::OptimizerRep* CMAESOptimizer::clone() const {
 
 Real CMAESOptimizer::optimize(SimTK::Vector& results)
 { 
-    Real f = HUGE_VAL; 
+    Real f;
     const OptimizerSystem& sys = getOptimizerSystem();
     cmaes_t evo;
     int n = sys.getNumParameters();
@@ -74,20 +74,53 @@ Real CMAESOptimizer::optimize(SimTK::Vector& results)
     // cmaes_init.
     // ===========
 	 
-	double* funvals = cmaes_init(&evo,
+	cmaes_init_para(&evo,
             n,                 // dimension
             &results[0],       // xstart
             &stepsizeArray[0], // stddev
             m_seed,            // seed
             numsamples,        // lambda
-            "non"              // input_parameter_filename
+            "writeonly"              // input_parameter_filename
             ); 
 	if (isresume) {
 		cmaes_resume_distribution(&evo, (char*)"resumecmaes.dat"); 
 	}
+    std::cout << "DEBUgseed " << m_seed << std::endl;
 
     // TODO when to call this?
     processSettingsAfterCMAESInit(evo);
+    std::cout << "DEBUgseed2 " << evo.sp.seed << std::endl;
+
+	double* funvals = cmaes_init_final(&evo);
+    std::cout << "DEBUgseed3 " << evo.sp.seed << std::endl;
+    /*
+	double* funvals = cmaes_init(&evo,
+        0,        //n,                 // dimension
+        NULL,     //&results[0],       // xstart
+        NULL,     //&stepsizeArray[0], // stddev
+        0,        //m_seed,            // seed
+        0,        //numsamples,        // lambda
+        "cmaes_initials.par"              // input_parameter_filename
+            ); 
+    */
+    /*
+	double* funvals = cmaes_init(&evo,
+        n,                 // dimension
+        &results[0],       // xstart
+        &stepsizeArray[0], // stddev
+        m_seed,            // seed
+        numsamples,        // lambda
+        "writeonly"              // input_parameter_filename
+            ); 
+            */
+    /*
+	if (isresume) {
+		cmaes_resume_distribution(&evo, (char*)"resumecmaes.dat"); 
+	}
+    */
+
+    // TODO when to call this?
+//    processSettingsAfterCMAESInit(evo);
 
     if (diagnosticsLevel == 1) {
         printf("%s\n", cmaes_SayHello(&evo));
@@ -117,7 +150,7 @@ Real CMAESOptimizer::optimize(SimTK::Vector& results)
 						if (pop[i][j] < lowerLimits[j] || 
 								pop[i][j] > upperLimits[j]) {
 							feasible = false; 
-							pop = cmaes_ReSampleSingle(&evo, i); 
+							cmaes_ReSampleSingle(&evo, i); 
 							break; 
 						}
 					}
@@ -147,6 +180,7 @@ Real CMAESOptimizer::optimize(SimTK::Vector& results)
     // Wrap up.
     // ========
     printf("Stop:\n%s\n", cmaes_TestForTermination(&evo));
+    printf("evals: %f ", cmaes_Get(&evo, "eval"));
 	cmaes_WriteToFile(&evo, "resume", "resumecmaes.dat");
     cmaes_exit(&evo);
 	
@@ -172,6 +206,7 @@ void CMAESOptimizer::processSettingsAfterCMAESInit(cmaes_t& evo)
     // maxIterations is a protected member variable of OptimizerRep.
     // TODO this should be set earlier, because parameters depend on what
     // stopMaxIter is.
+    /*
 	evo.sp.stopMaxIter = maxIterations;
 
     // stopTolFun
@@ -186,6 +221,7 @@ void CMAESOptimizer::processSettingsAfterCMAESInit(cmaes_t& evo)
                 "CMAESOptimizer::processSettingsAfterCMAESInit");
         evo.sp.stopMaxFunEvals = stopMaxFunEvals;
     }
+    */
 
     // maxtime
     // =======
