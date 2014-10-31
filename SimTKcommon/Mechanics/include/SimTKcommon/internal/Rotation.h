@@ -315,10 +315,35 @@ convertThreeAxesRotationToThreeAngles
    (BodyOrSpaceType bodyOrSpace, const CoordinateAxis& axis1, 
     const CoordinateAxis& axis2, const CoordinateAxis& axis3 ) const;
 
-/** Converts rotation matrix to a quaternion. **/
+/** Converts rotation matrix to an equivalent quaternion in canonical form
+(meaning its scalar element is nonnegative). This uses a robust,
+singularity-free method due to Richard Spurrier. The cost is about 40 flops.
+
+@par Reference
+Spurrier, R.A., "Comment on 'Singularity-Free Extraction of a Quaternion 
+from a Direction-Cosine Matrix'", J. Spacecraft and Rockets, 15(4):255, 
+1977. 
+
+@see Quaternion_ **/
 SimTK_SimTKCOMMON_EXPORT QuaternionP convertRotationToQuaternion() const;
 
-/** Converts rotation matrix to angle-axis form. **/
+/** Converts rotation matrix to an equivalent angle-axis representation in
+canonicalized form. The result (a,v) is returned packed into a Vec4
+[a vx vy vz], with -Pi < a <= Pi and |v|=1. Cost is about 140 flops. 
+
+If the rotation angle is zero (or very very close to zero) then the returned
+unit vector is arbitrary. 
+
+@par Theory
+Euler's Rotation Theorem (1776) guarantees that any rigid body rotation is 
+equivalent to a rotation by an angle about a fixed axis. This method finds
+such an angle and axis. Numerically, this is a very tricky computation to
+get correct in all cases. We use Spurrier's method to obtain a 
+numerically-robust quaternion equivalent to this rotation matrix, then 
+carefully extract and canonicalize the angle-axis form from the quaternion.
+
+@see convertRotationToQuaternion()
+**/
 Vec4P convertRotationToAngleAxis() const  
 { return convertRotationToQuaternion().convertQuaternionToAngleAxis(); }
 
@@ -412,23 +437,43 @@ typedef UnitVec<P,Mat33P::RowSpacing> ColType;
 but will not necessarily have unit spacing. **/
 typedef UnitRow<P,Mat33P::ColSpacing> RowType;
 
-/** Return the ith row of this %Rotation matrix as a Row<3>. **/
+/** Return a reference to the ith row of this %Rotation matrix as 
+a UnitRow3. **/
 const RowType&  row( int i ) const         
 { return reinterpret_cast<const RowType&>(asMat33()[i]); }
 /** Same as row(i) but nicer to look at. **/
 const RowType&  operator[]( int i ) const  { return row(i); }
 
-/** Return the jth column of this %Rotation matrix as a Vec<3>. **/
+/** Return a reference to the jth column of this %Rotation matrix as
+a UnitVec3. **/
 const ColType&  col( int j ) const         
 { return reinterpret_cast<const ColType&>(asMat33()(j)); }
 /** Same as col(j) but nicer to look at. **/
 const ColType&  operator()( int j ) const  { return col(j); }
-/** Return col(0) of this %Rotation matrix as a Vec<3>. **/
+
+/** Return col(0) of this %Rotation matrix as a UnitVec3. **/
 const ColType&  x() const                  { return col(0); }
-/** Return col(1) of this %Rotation matrix as a Vec<3>. **/
+/** Return col(1) of this %Rotation matrix as a UnitVec3. **/
 const ColType&  y() const                  { return col(1); }
-/** Return col(2) of this %Rotation matrix as a Vec<3>. **/
+/** Return col(2) of this %Rotation matrix as a UnitVec3. **/
 const ColType&  z() const                  { return col(2); }
+
+/** Given a CoordinateAxis (XAxis,YAxis, or ZAxis) return a reference to
+the corresponding column of this %Rotation matrix. The result is equivalent
+to multiplying R_AB*v_B where v_B is [1,0,0],[0,1,0], or [0,0,1], which would
+cost 15 flops, but requires no computation. **/
+const ColType& getAxisUnitVec(CoordinateAxis axis) const 
+{   return col(axis); }
+
+/** Given a CoordinateDirection (+/-XAxis, etc.) return a unit vector in that
+direction. The result is equivalent to multiplying R_AB*v_B where v_B is 
+[+/-1,0,0], [0,+/-1,0], or [0,0,+/-1], which would cost 15 flops, but this
+method requires at most 3 flops. **/
+const UnitVec<P,1> getAxisUnitVec(CoordinateDirection dir) const {
+    const ColType& axDir = getAxisUnitVec(dir.getAxis());
+    return dir.getDirection() > 0 ? UnitVec<P,1>( axDir) 
+                                  : UnitVec<P,1>(-axDir); // cheap 
+}
 
 /** (Advanced) Set the Rotation_ matrix directly - but you had better know what 
 you are doing! **/
@@ -1271,6 +1316,24 @@ const ColType&  x() const                  { return col(0); }
 const ColType&  y() const                  { return col(1); }
 const ColType&  z() const                  { return col(2); }
 //@}
+
+
+/** Given a CoordinateAxis (XAxis,YAxis, or ZAxis) return a reference to
+the corresponding column of this %InverseRotation matrix. The result is 
+equivalent to multiplying R_AB*v_B where v_B is [1,0,0],[0,1,0], or [0,0,1], 
+which would cost 15 flops, but requires no computation. **/
+const ColType& getAxisUnitVec(CoordinateAxis axis) const 
+{   return col(axis); }
+
+/** Given a CoordinateDirection (+/-XAxis, etc.) return a unit vector in that
+direction. The result is equivalent to multiplying R_AB*v_B where v_B is 
+[+/-1,0,0], [0,+/-1,0], or [0,0,+/-1], which would cost 15 flops, but this 
+method requires at most 3 flops. **/
+const UnitVec<P,1> getAxisUnitVec(CoordinateDirection dir) const {
+    const ColType& axDir = getAxisUnitVec(dir.getAxis());
+    return dir.getDirection() > 0 ? UnitVec<P,1>( axDir) 
+                                  : UnitVec<P,1>(-axDir); // cheap 
+}
 
 /** Conversion from InverseRotation_ to BaseMat. Note: asMat33 is slightly
 more efficient than toMat33() (no copy), but you have to know the internal 
