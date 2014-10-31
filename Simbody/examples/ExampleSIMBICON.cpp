@@ -23,7 +23,7 @@
 
 // Use rigid contact instead of compliant contact. This macro is used in the
 // Biped header.
-#define RIGID_CONTACT
+// #define RIGID_CONTACT
 
 #include "BipedSystem.h"
 #include <Simbody.h>
@@ -1088,7 +1088,6 @@ iss >> orig;
         viz.addDecoration(MobilizedBodyIndex(0), Vec3(0), help);
         biped.updMatterSubsystem().setShowDefaultGeometry(false);
 
-        /*
         // Add the controller.
         SIMBICON* simctrl = new SIMBICON(biped);
         // Force::Custom takes ownership over simctrl.
@@ -1099,7 +1098,6 @@ iss >> orig;
         biped.addEventHandler(
                 new SimbiconStateHandler(biped, *simctrl, EVENT_PERIOD));
         #endif
-        */
 
         // Initialize.
         State s;
