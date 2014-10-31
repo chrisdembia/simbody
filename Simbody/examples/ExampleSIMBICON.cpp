@@ -23,7 +23,7 @@
 
 // Use rigid contact instead of compliant contact. This macro is used in the
 // Biped header.
-// #define RIGID_CONTACT
+#define RIGID_CONTACT
 
 #include "BipedSystem.h"
 #include <Simbody.h>
@@ -1159,7 +1159,16 @@ iss >> orig;
 
         // Simulate.
         try {
-            ts.stepTo(finalTime);
+            #ifdef RIGID_CONTACT
+                ts.stepTo(finalTime);
+            #else
+                Real t = 0;
+                Real h = 0.0001;
+                while (t < finalTime) {
+                    t += h;
+                    ts.stepTo(t);
+                }
+            #endif
             std::cout << s.getTime() << std::endl;
             std::cout << "y=" << ts.getState().getY() << std::endl;
             std::cout << "normRMS: " << (orig - ts.getState().getY()).normRMS() << std::endl;
