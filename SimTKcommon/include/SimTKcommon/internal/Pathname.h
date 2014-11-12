@@ -87,6 +87,74 @@ namespace SimTK {
  */
 class SimTK_SimTKCOMMON_EXPORT Pathname {
 public:
+
+    /// @name Getting information about the installation and file system.
+    /// @{
+
+    /// Return true if the given pathname names a file that exists and is
+    /// readable.
+    static bool fileExists(const std::string& fileName);
+
+    /// Find the installation directory for something, using the named
+    /// installation directory environment variable if it exists, otherwise
+    /// by appending the supplied path offset to the default install directory.
+    static std::string getInstallDir(const std::string& envInstallDir,
+                                     const std::string& offsetFromDefaultInstallDir);
+
+    /// Get the default installation directory for this platform. This will
+    /// be /usr/local/ for Linux and Apple, and the value of the \%ProgramFiles\%
+    /// registry entry on Windows (typically c:\\Program Files\\).
+    static std::string getDefaultInstallDir();
+
+    /// Get the absolute pathname of the currently executing program.
+    static std::string getThisExecutablePath();
+    /// Get the absolute pathname of the directory which contains the 
+    /// currently executing program.
+    static std::string getThisExecutableDirectory();
+    /// Get the absolute pathname of the current working directory
+    /// including a trailing separator character. Windows keeps a current
+    /// working directory for each drive which can be optionally specified
+    /// (otherwise we use the current drive). If the specified drive 
+    /// doesn't exist we'll behave as though root were its current
+    /// working directory. The drive argument is ignored
+    /// on non-Windows platforms.
+    static std::string getCurrentWorkingDirectory(const std::string& drive="");
+    /// Get the canonicalized name of the root directory. This is "x:\" on Windows
+    /// with "x" replaced by the current drive letter or the specified drive
+    /// (in lowercase), and just "/" on non-Windows systems.
+    static std::string getRootDirectory(const std::string& drive="");
+    /// On Windows, return the current drive letter in lowercase, with no
+    /// trailing ":"; on other platforms return an empty string.
+    static std::string getCurrentDriveLetter();
+    /// On Windows, return the current drive letter in lowercase, 
+    /// followed by ":"; on other platforms just return an empty string.
+    static std::string getCurrentDrive();
+    /// Return true if the named environment variable is present
+    /// in the environment.
+    static bool environmentVariableExists(const std::string& name);
+    /// Return the value of the named environment variable or 
+    /// the empty string if the variable is not found. Note that that
+    /// is indistinguishable from a variable that is present but with
+    /// a null value -- use environmentVariableExists() if you really
+    /// need to know the difference.
+    static std::string getEnvironmentVariable(const std::string& name);
+    /// Return this platform's pathname separator character as
+    /// a string. This is backslash on Windows and forward slash
+    /// everywhere else.
+    static std::string getPathSeparator();
+    /// Return this platform's pathname separator character as
+    /// a char. This is backslash on Windows and forward slash
+    /// everywhere else.
+    static char getPathSeparatorChar();
+    /// Returns true if the character is slash or backslash.
+    static bool isPathSeparator(char c) {
+        return c=='/' || c=='\\';
+    }
+    /// @}
+
+    /// @name Manipulating paths
+    /// @{
+
     /// Dismantle a supplied pathname into its component
     /// parts. This can take pathnames like <pre>   
     ///     /usr/local/libMyDll_d.so
@@ -137,7 +205,7 @@ public:
     ///   - leading "." and "@" are replaced with the current working
     ///     directory or the executable directory, resp.
     ///   - each ".." segment is processed, removing it and its
-    ///     previous segment; initial ".." is treated as "./..".
+    ///     previous segment; initial "../" is treated as "./..". TODO
     ///   - empty segments and interior "." segments are removed
     ///   - if the input pathname ends in a slash after above processing,
     ///     then the returned pathname will also end in a slash.
@@ -146,14 +214,41 @@ public:
     ///     disk designator in lower case, e.g. "c:".
     ///
     /// The result here is what you get by reassembling the components
-    /// from deconstructPathname(), plus inserting the current working
-    /// directory in front if the path name was relative.
-    static std::string getAbsolutePathname(const std::string& pathname) {
+    /// from deconstructPathname(), plus inserting a base directory in front if
+    /// the path name was relative. By default, the base directory is the
+    /// current working directory. You might use a different base directory if
+    /// the input pathname is relative to some directory other than the current
+    /// working directory. If the base path is a relative path, it is
+    /// considered to be relative to the current working directory. The value
+    /// for basepath can be a path to either a directory or a file; in the
+    /// latter case, the base directory is the directory that contains the file.
+    static std::string getAbsolutePathname(const std::string& pathname,
+            const std::string& basepath = "") {
         bool isAbsolutePath;
         std::string directory, fileName, extension;
-        deconstructPathname(pathname, isAbsolutePath, directory, fileName, extension);
-        if (!isAbsolutePath)
-            directory = getCurrentWorkingDirectory() + directory;
+        deconstructPathname(pathname, isAbsolutePath, directory, fileName,
+                extension);
+
+        if (!isAbsolutePath) {
+
+            // Figure out the baseDirectory.
+            std::string baseDirectory;
+            if (basepath.empty()) {
+                baseDirectory = getCurrentWorkingDirectory();
+            }
+            else {
+                bool baseIsAbsolutePath;
+                std::string baseFileName, baseExtension;
+                deconstructPathname(basepath, baseIsAbsolutePath,
+                        baseDirectory, baseFileName, baseExtension);
+
+                if (!baseIsAbsolutePath)
+                    baseDirectory = getAbsoluteDirectoryPathname(baseDirectory);
+            }
+
+            directory = baseDirectory + directory;
+        }
+
         return directory + fileName + extension;
     }
 
@@ -167,69 +262,11 @@ public:
         return absPath;
     }
 
-    /// Return true if the given pathname names a file that exists and is
-    /// readable.
-    static bool fileExists(const std::string& fileName);
-
-    /// Get the default installation directory for this platform. This will
-    /// be /usr/local/ for Linux and Apple, and the value of the \%ProgramFiles\%
-    /// registry entry on Windows (typically c:\\Program Files\\).
-    static std::string getDefaultInstallDir();
-
     /// Append a subdirectory offset to an existing pathname (relative or absolute).
     /// A leading "/" in the offset is ignored, and the result ends in "/".
     static std::string addDirectoryOffset(const std::string& base, const std::string& offset);
+    /// @}
 
-    /// Find the installation directory for something, using the named
-    /// installation directory environment variable if it exists, otherwise
-    /// by appending the supplied path offset to the default install directory.
-    static std::string getInstallDir(const std::string& envInstallDir,
-                                     const std::string& offsetFromDefaultInstallDir);
-
-    /// Get the absolute pathname of the currently executing program.
-    static std::string getThisExecutablePath();
-    /// Get the absolute pathname of the directory which contains the 
-    /// currently executing program.
-    static std::string getThisExecutableDirectory();
-    /// Get the absolute pathname of the current working directory
-    /// including a trailing separator character. Windows keeps a current
-    /// working directory for each drive which can be optionally specified
-    /// (otherwise we use the current drive). If the specified drive 
-    /// doesn't exist we'll behave as though root were its current
-    /// working directory. The drive argument is ignored
-    /// on non-Windows platforms.
-    static std::string getCurrentWorkingDirectory(const std::string& drive="");
-    /// Get the canonicalized name of the root directory. This is "x:\" on Windows
-    /// with "x" replaced by the current drive letter or the specified drive
-    /// (in lowercase), and just "/" on non-Windows systems.
-    static std::string getRootDirectory(const std::string& drive="");
-    /// On Windows, return the current drive letter in lowercase, with no
-    /// trailing ":"; on other platforms return an empty string.
-    static std::string getCurrentDriveLetter();
-    /// On Windows, return the current drive letter in lowercase, 
-    /// followed by ":"; on other platforms just return an empty string.
-    static std::string getCurrentDrive();
-    /// Return true if the named environment variable is present
-    /// in the environment.
-    static bool environmentVariableExists(const std::string& name);
-    /// Return the value of the named environment variable or 
-    /// the empty string if the variable is not found. Note that that
-    /// is indistinguishable from a variable that is present but with
-    /// a null value -- use environmentVariableExists() if you really
-    /// need to know the difference.
-    static std::string getEnvironmentVariable(const std::string& name);
-    /// Return this platform's pathname separator character as
-    /// a string. This is backslash on Windows and forward slash
-    /// everywhere else.
-    static std::string getPathSeparator();
-    /// Return this platform's pathname separator character as
-    /// a char. This is backslash on Windows and forward slash
-    /// everywhere else.
-    static char getPathSeparatorChar();
-    /// Returns true if the character is slash or backslash.
-    static bool isPathSeparator(char c) {
-        return c=='/' || c=='\\';
-    }
 };
 
 } // namespace SimTK

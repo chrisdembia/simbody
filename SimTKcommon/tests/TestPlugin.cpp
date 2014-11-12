@@ -116,6 +116,15 @@ void testDeconstructFileName() {
         && debugSuffix.empty()&&extension.empty());
 
     directory=libPrefix=baseName=debugSuffix=extension="junk";
+    name = "../../filename"; // relative path that goes upward initially
+    SimTK_TEST(Plugin::deconstructLibraryName(name,
+        isAbsPath, directory, libPrefix, baseName, debugSuffix, extension));
+    SimTK_TEST(!isAbsPath 
+        && directory=="../../"
+        && libPrefix.empty()&&baseName=="filename"
+        && debugSuffix.empty()&&extension.empty());
+
+    directory=libPrefix=baseName=debugSuffix=extension="junk";
     name = "@/../../filename"; // executable path-relative name
     SimTK_TEST(Plugin::deconstructLibraryName(name,
         isAbsPath, directory, libPrefix, baseName, debugSuffix, extension));

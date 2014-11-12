@@ -135,10 +135,8 @@ static void removeDriveInPlace(string& inout, string& drive) {
 // full path name they represent, then the entire path is divided
 // into components. If a component is "." or "" (empty) it is
 // removed. If a component is ".." it and the previous component
-// if any are removed. (".." as a first component will report as
-// ill formed.)
-// If there is something ill-formed about the file name we'll return
-// false.
+// if any are removed, with one exception. If the path beings with a series of
+// "../"'s, these are not removed.
 void Pathname::deconstructPathname( const string&   name,
                                     bool&           isAbsolutePath,
                                     string&         directory,
@@ -164,10 +162,6 @@ void Pathname::deconstructPathname( const string&   name,
     // a slash to avoid special cases below.
     if (processed=="." || processed==".." || processed=="@")
         processed += "/";
-
-    // If the path begins with "../" we'll make it ./../ to simplify handling.
-    if (processed.substr(0,3) == "../")
-        processed.insert(0, "./");
 
     if (processed.substr(0,1) == "/") {
         isAbsolutePath = true;
@@ -222,6 +216,16 @@ void Pathname::deconstructPathname( const string&   name,
         if (!drive.empty())
             directory = drive + ":";
         directory += "/";
+    }
+    else if (numDotDotsSeen) {
+        // numDotDotsSeen != 0 if the path started with a series of ".."'s.
+        // Add back ".."'s that were at the start of the path.
+        // Only want to do this for a relative path, though it probably isn't
+        // possible for numDotDotsSeen != 0 if pathname is an absolute path.
+        while (numDotDotsSeen) {
+            directory += "../";
+            --numDotDotsSeen;
+        }
     }
 
     for (int i = (int)segmentsInReverse.size()-1; i >= 0; --i)
