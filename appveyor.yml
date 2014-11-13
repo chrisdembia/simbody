@@ -16,3 +16,4 @@ build_script:
 
 test_script:
   - ctest -j8 -C "Release"
+
