@@ -10,7 +10,7 @@ install:
 
 build_script:
   # Treat all warnings as errors.
-  - cmake . -DBUILD_VISUALIZER=OFF
+  - cmake . -DBUILD_VISUALIZER=OFF -DSIMBODY_USE_PRECOMPILED_HEADERS=ON
   # See http://msdn.microsoft.com/en-us/library/ms164311.aspx for
   # command-line options to MSBuild.
   - MSBuild Simbody.sln /maxcpucount:8 /target:ALL_BUILD /p:Configuration=Release
