@@ -16,5 +16,5 @@ build_script:
   - MSBuild Simbody.sln /maxcpucount:8 /target:ALL_BUILD /p:Configuration=Release
 
 test_script:
-  - ctest -j8 -C "Release"
+  - ctest -j8 -C "Release" --output-on-failure
 
