@@ -19,6 +19,10 @@ IF(BUILD_UNVERSIONED_LIBRARIES)
     SET_TARGET_PROPERTIES(${SHARED_TARGET} PROPERTIES
     	PROJECT_LABEL "Code - ${SHARED_TARGET}"
     	SOVERSION ${SIMBODY_SONAME_VERSION})
+
+    IF(SIMBODY_USE_PRECOMPILED_HEADERS)
+        COTIRE(${SHARED_TARGET})
+    ENDIF()
     
     # install library; on Windows the .dll goes in the bin directory.
     

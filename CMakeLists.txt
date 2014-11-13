@@ -180,6 +180,24 @@ IF(BUILD_EXAMPLES AND NOT (BUILD_TESTS_AND_EXAMPLES_STATIC OR
         "BUILD_TESTS_AND_EXAMPLES_SHARED are both off.")
 ENDIF()
 
+# Cotire.
+# -------
+OPTION(SIMBODY_USE_PRECOMPILED_HEADERS
+    "Use cotire (https://github.com/sakra/cotire) to speed up compilation
+    by using precompiled headers."
+    OFF)
+MARK_AS_ADVANCED(SIMBODY_USE_PRECOMPILED_HEADERS)
+IF(SIMBODY_USE_PRECOMPILED_HEADERS)
+    SET(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${CMAKE_SOURCE_DIR}")
+    INCLUDE(cotire)
+    # By default, cotire also creates unity build targets. The line below
+    # disables unity build targets across the project.
+    SET_PROPERTY(GLOBAL PROPERTY COTIRE_ADD_UNITY_BUILD FALSE)
+    # Note that cotire does not work well when using the same source files for
+    # multiple targets, so we only use cotire for building shared unversioned
+    # libraries.
+ENDIF()
+
 #
 # Create a platform name useful for finding things in the Platform
 # directory.
