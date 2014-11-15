@@ -13,7 +13,7 @@ build_script:
   - cmake . -DBUILD_VISUALIZER=OFF
   # See http://msdn.microsoft.com/en-us/library/ms164311.aspx for
   # command-line options to MSBuild.
-  - MSBuild Simbody.sln /maxcpucount:8 /target:ALL_BUILD /p:Configuration=Release
+  - MSBuild Simbody.sln /target:ALL_BUILD /p:Configuration=Release /maxcpucount /verbosity:quiet
 
 test_script:
   - ctest -j8 -C "Release" --output-on-failure
