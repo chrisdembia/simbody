@@ -6,9 +6,6 @@ add_subdirectory(src/c-cmaes)
 FILE(GLOB src_files  ./src/*.cpp)
 FILE(GLOB incl_files ./src/*.h)
 
-set_source_files_properties(./src/c-cmaes/cmaes.c
-    PROPERTIES COMPILE_DEFINITIONS _CRT_SECURE_NO_WARNINGS)
-
 # append to the local scope copy, and then copy up to parent scope
 list(APPEND SOURCE_FILES ${src_files})
 set(SOURCE_FILES ${SOURCE_FILES} PARENT_SCOPE)
