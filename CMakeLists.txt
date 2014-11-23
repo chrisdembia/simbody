@@ -208,6 +208,7 @@ IF(SIMBODY_USE_PRECOMPILED_HEADERS)
     # multiple targets, so we only use cotire for building shared unversioned
     # libraries, and only for examples/tests build with shared libraries.
 ENDIF()
+message("DEBUG ${CMAKE_MODULE_PATH}")
 
 # In addition to the platform name we need to know the Application Binary
 # Interface (ABI) we're building for. Currently that is either x86, meaning
