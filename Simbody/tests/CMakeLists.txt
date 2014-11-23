@@ -22,6 +22,7 @@ ADD_SUBDIRECTORY(adhoc)
 # versions of the executable.
 
 FILE(GLOB REGR_TESTS "*.cpp")
+SET(_LOOP_COUNT 0)
 FOREACH(TEST_PROG ${REGR_TESTS})
     GET_FILENAME_COMPONENT(TEST_ROOT ${TEST_PROG} NAME_WE)
 
@@ -33,7 +34,21 @@ FOREACH(TEST_PROG ${REGR_TESTS})
 	      PROJECT_LABEL "Test_Regr - ${TEST_ROOT}")
         TARGET_LINK_LIBRARIES(${TEST_ROOT} 
 					${TEST_SHARED_TARGET})
+		# Configure precompiled headers.
+-        IF(${_LOOP_COUNT})
+-            # This is the first time through, get the prefix header.
+-            COTIRE(${TEST_ROOT})
+-            GET_TARGET_PROPERTY(_PREFIX_HEADER ${TEST_ROOT}
+-                COTIRE_CXX_PREFIX_HEADER)
+-        ELSE()
+-            # For all other tests, use the same prefix header.
+-            SET_TARGET_PROPERTIES(${TEST_ROOT} PROPERTIES
+-                COTIRE_CXX_PREFIX_HEADER_INIT "${_PREFIX_HEADER}")
+-            COTIRE(${TEST_ROOT})
+-        ENDIF()
+-        # Register the target as a test.
         ADD_TEST(${TEST_ROOT} ${EXECUTABLE_OUTPUT_PATH}/${TEST_ROOT})
+        
     ENDIF (BUILD_TESTS_AND_EXAMPLES_SHARED)
 
     IF (BUILD_STATIC_LIBRARIES AND BUILD_TESTS_AND_EXAMPLES_STATIC)
@@ -48,7 +63,7 @@ FOREACH(TEST_PROG ${REGR_TESTS})
 					${TEST_STATIC_TARGET})
         ADD_TEST(${TEST_STATIC} ${EXECUTABLE_OUTPUT_PATH}/${TEST_STATIC})
     ENDIF()
-
+    MATH(EXPR _LOOP_COUNT "${_LOOP_COUNT}+1")
 ENDFOREACH(TEST_PROG ${REGR_TESTS})
 
 
