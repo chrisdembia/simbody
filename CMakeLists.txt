@@ -195,6 +195,15 @@ IF(SIMBODY_USE_PRECOMPILED_HEADERS)
     # By default, cotire also creates unity build targets. The line below
     # disables unity build targets across the project.
     SET_PROPERTY(GLOBAL PROPERTY COTIRE_ADD_UNITY_BUILD FALSE)
+    
+    # On Windows, the precompiled header includes Windows.h without giving
+    # us the chance to declare the two macros below. To ensure these macros
+    # are defined for the precompiled header, we specify them here. In this case,
+    # they are used everywhere.
+    IF(WIN32)
+        ADD_DEFINITIONS(-DNOMINMAX -DWIN32_LEAN_AND_MEAN)
+    ENDIF()
+    
     # Note that cotire does not work well when using the same source files for
     # multiple targets, so we only use cotire for building shared unversioned
     # libraries, and only for examples/tests build with shared libraries.
