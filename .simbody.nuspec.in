@@ -1,3 +1,6 @@
+<!--For packaging Simbody via NuGet to use in Appveyor testing.
+    Not intended to be used to create a legitimate distribution
+    of Simbody.-->
 <?xml version="1.0"?>
 <package >
   <metadata>
