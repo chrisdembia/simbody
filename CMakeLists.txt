@@ -655,3 +655,9 @@ CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/cmake/pkgconfig/simbody.pc.in
     ${CMAKE_CURRENT_BINARY_DIR}/cmake/pkgconfig/simbody.pc @ONLY)
 INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/cmake/pkgconfig/simbody.pc 
     DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}/pkgconfig/)
+
+IF(WIN32)
+    # Configure NuGet file for deploying simbody to appveyor NuGet feed.
+    CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/.simbody.nuspec.in
+        ${CMAKE_BINARY_DIR}/simbody.nuspec @ONLY)
+ENDIF()

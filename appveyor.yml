@@ -5,16 +5,27 @@
 
 shallow_clone: true
 
-install:
+init:
   - SET PATH=C:\Program Files (x86)\MSBuild\12.0\bin\;%PATH%
 
 build_script:
   # Treat all warnings as errors.
-  - cmake . -DBUILD_VISUALIZER=OFF
+  - cmake . -DBUILD_VISUALIZER=OFF -DCMAKE_INSTALL_PREFIX=install
   # See http://msdn.microsoft.com/en-us/library/ms164311.aspx for
   # command-line options to MSBuild.
-  - MSBuild Simbody.sln /maxcpucount:8 /target:ALL_BUILD /p:Configuration=Release
+  - MSBuild Simbody.sln /maxcpucount /target:ALL_BUILD /p:Configuration=Release /verbosity:quiet
 
 test_script:
-  - ctest -j8 -C "Release" --output-on-failure
+  - ctest -j8 -C Release --output-on-failure
 
+# From here, the script only applies to the master branch.
+branches:
+  only:
+    - master
+    
+after_test:
+  # Install Simbody.
+  - cmake --build . --target install --config Release -- /maxcpucount /verbosity:quiet
+  # Create NuGet package.
+  - nuget pack ../simbody.nuspec
+  - appveyor PushArtifact simbody.0.0.0.nupkg
