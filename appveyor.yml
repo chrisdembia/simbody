@@ -19,9 +19,12 @@ test_script:
   - ctest -j8 -C Release --output-on-failure
     
 after_test:
-  # Install Simbody.
+  ## Install Simbody.
   - cmake --build . --target install --config Release -- /maxcpucount /verbosity:quiet
-  # Create NuGet package.
-  - cd install
-  - nuget pack ../simbody.nuspec
+
+  ## Create NuGet package.
+  # Create a nupkg. The install directory is to be packaged.
+  - nuget pack simbody.nuspec -BasePath install
+  # The line above creates the file simbody.0.0.0.nupkg.
+  # Push this to Appveyor's NuGet account feed, to be used by OpenSim.
   - appveyor PushArtifact simbody.0.0.0.nupkg
