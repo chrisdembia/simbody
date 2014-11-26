@@ -27,5 +27,6 @@ after_test:
   # Install Simbody.
   - cmake --build . --target install --config Release -- /maxcpucount /verbosity:quiet
   # Create NuGet package.
+  - cd install
   - nuget pack ../simbody.nuspec
   - appveyor PushArtifact simbody.0.0.0.nupkg
