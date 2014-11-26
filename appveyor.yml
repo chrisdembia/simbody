@@ -17,11 +17,6 @@ build_script:
 
 test_script:
   - ctest -j8 -C Release --output-on-failure
-
-# From here, the script only applies to the master branch.
-branches:
-  only:
-    - master
     
 after_test:
   # Install Simbody.
