@@ -83,14 +83,6 @@ SET(STATIC_TARGET ${SimTKMATH_LIBRARY_NAME}_static)
 SET(SHARED_TARGET_VN ${SimTKMATH_LIBRARY_NAME}${VN})
 SET(STATIC_TARGET_VN ${SimTKMATH_LIBRARY_NAME}${VN}_static)
 
-# On Unix or Cygwin we have to add the debug suffix manually
-IF (UNIX AND CMAKE_BUILD_TYPE MATCHES Debug)
-    SET(SHARED_TARGET ${SHARED_TARGET}_d)
-    SET(STATIC_TARGET ${STATIC_TARGET}_d)
-    SET(SHARED_TARGET_VN ${SHARED_TARGET_VN}_d)
-    SET(STATIC_TARGET_VN ${STATIC_TARGET_VN}_d)
-ENDIF (UNIX AND CMAKE_BUILD_TYPE MATCHES Debug)
-
 ## Test against the unversioned libraries if they are being built;
 ## otherwise against the versioned libraries.
 IF(BUILD_UNVERSIONED_LIBRARIES)
@@ -178,7 +170,7 @@ INCLUDE_DIRECTORIES(${SOURCE_INCLUDE_DIRS})
 # Installation
 #
 
-# libraries and examples are installed from their subdirectories; headers here
+# libraries are installed from their subdirectories; headers here
 
 # install headers
 FILE(GLOB CORE_HEADERS     include/*.h                  */include/*.h)
@@ -199,10 +191,6 @@ IF(BUILD_STATIC_LIBRARIES)
     ADD_SUBDIRECTORY( staticTarget )
 ENDIF()
 ADD_SUBDIRECTORY( sharedTarget )
-
-IF( BUILD_EXAMPLES )
-  ADD_SUBDIRECTORY( examples )
-ENDIF( BUILD_EXAMPLES )
 
 IF( BUILD_TESTING )
   ADD_SUBDIRECTORY( tests )

@@ -56,13 +56,15 @@ int main() {
     State state = system.realizeTopology();
     pendulum2.setRate(state, 5.0);
 
-    // Simulate for 50 seconds.
+    // Simulate for 20 seconds.
     RungeKuttaMersonIntegrator integ(system);
     TimeStepper ts(system, integ);
     ts.initialize(state);
-    ts.stepTo(50.0);
+    ts.stepTo(20.0);
 }
 ```
+
+![Double-pendulum simulation in Simbody][doublePendulum]
 
 See [Simbody's User Guide][user] for a step-by-step explanation of this
 example.
@@ -81,7 +83,7 @@ Features
 
 You want to...
 --------------
-* **[install Simbody](#installing)** (see also: old [Windows][buildwin] and [Mac/Linux][buildunix] build instructions, [old install instructions][user]).
+* **[install Simbody](#installing)**.
 * [use Simbody in your own program][user].
 * [view API documentation](https://simtk.org/api_docs/simbody/api_docs33/Simbody/html/index.html).
 * [learn the theory behind Simbody](https://github.com/simbody/simbody/raw/master/Simbody/doc/SimbodyTheoryManual.pdf).
@@ -97,7 +99,7 @@ Dependencies
 
 Simbody depends on the following:
 
-* cross-platform building: [CMake](http://www.cmake.org/cmake/resources/software.html) 2.8 or greater
+* cross-platform building: [CMake](http://www.cmake.org/cmake/resources/software.html) 2.8.6 or greater
 * compiler: [Visual Studio](http://www.visualstudio.com) 2010 or 2013 (Windows only), [gcc](http://gcc.gnu.org/) (typically on Linux), or [Clang](http://clang.llvm.org/) (typically on Mac)
 * linear algebra: [LAPACK](http://www.netlib.org/lapack/) and [BLAS](http://www.netlib.org/blas/)
 * visualization (optional): [FreeGLUT](http://freeglut.sourceforge.net/), [Xi and Xmu](http://www.x.org/wiki/)
@@ -130,12 +132,12 @@ We give the linear algebra dependencies to you, and Windows comes with the visua
 
 #### Download the Simbody source code
 
-* Method 1: Download the source code from https://github.com/simbody/simbody/releases. Look for the highest-numbered release, click on the .zip button, and unzip it on your computer. We'll assume you unzipped the source code into `~/simbody-source`.
+* Method 1: Download the source code from https://github.com/simbody/simbody/releases. Look for the highest-numbered release, click on the .zip button, and unzip it on your computer. We'll assume you unzipped the source code into `C:/Simbody-source`.
 * Method 2: Clone the git repository.
     1. Get git. There are many options: [Git for Windows](http://msysgit.github.io/) (most advanced), [TortoiseGit](https://code.google.com/p/tortoisegit/wiki/Download) (intermediate; good for TortoiseSVN users), [GitHub for Windows](https://windows.github.com/) (easiest).
-    2. Clone the github repository into `~/simbody-source`. Run the following in a Git Bash / Git Shell, or find a way to run the equivalent commands in a GUI client:
+    2. Clone the github repository into `C:/Simbody-source`. Run the following in a Git Bash / Git Shell, or find a way to run the equivalent commands in a GUI client:
 
-            $ git clone https://github.com/simbody/simbody.git ~/simbody-source
+            $ git clone https://github.com/simbody/simbody.git C:/Simbody-source
             $ git checkout Simbody-3.4
 
     3. In the last line above, we assumed you want to build a released version. Feel free to change the version you want to build. If you want to build the latest development version ("bleeding edge") of Simbody off the master branch, you can omit the `checkout` line.
@@ -167,7 +169,9 @@ We give the linear algebra dependencies to you, and Windows comes with the visua
     * **RelWithDebInfo**: debugger symbols; optimized. Bigger but not slower than Release; choose this if unsure.
     * **MinSizeRel**: minimum size; optimized.
 
-    You at least want release libraries (the last 3 count as release), but you can have debug libraries coexist with them. To do this, go through the full installation process twice, once for each configuration. You should install the release configuration *last* to ensure that you use the release version of the `simbody-visualizer` instead of the slow debug version.
+    You at least want release libraries (the last 3 count as release), but you
+    can have debug libraries coexist with them. To do this, go through the full
+    installation process twice, once for each configuration.
 3. Build the project **ALL_BUILD** by right-clicking it and selecting **Build**.
 4. Run the tests by right-clicking **RUN_TESTS** and selecting **Build**.
 5. Install Simbody by right-clicking **INSTALL** and selecting **Build**.
@@ -215,7 +219,7 @@ Mac and Homebrew
 
 If using a Mac and Homebrew, the dependencies are taken care of for you.
 
-With this method, Simbody is built without C++11 (the `-std=c++11` compiler flag). Thus, any projects you build on top of Simbody must also NOT use C++11. If you do try to use C++11, you'll run into mysterious errors. See issue #125.
+With this method, Simbody is built with C++11 (the `-std=c++11` compiler flag). Thus, any projects you build on top of Simbody must also use C++11. See issue #125.
 
 #### Install
 
@@ -261,7 +265,7 @@ Ubuntu and apt-get
 
 You can currently get Simbody via the Open Source Robotics Foundation's Debian repositories. We are currently working on getting Simbody directly into the Debian repositories. `apt-get` will take care of getting the necessary dependencies.
 
-With this method, Simbody is built without C++11 (the `-std=c++11` compiler flag). Thus, any projects you build on top of Simbody must also NOT use C++11. If you do try to use C++11, you'll run into mysterious errors. See issue #125.
+With this method, Simbody is built with C++11 (the `-std=c++11` compiler flag). Thus, any projects you build on top of Simbody must also use C++11. See issue #125.
 
 #### Install
 
@@ -340,9 +344,9 @@ There are two ways to get the source code.
 
             $ cmake ~/simbody-source -DCMAKE_INSTALL_PREFIX=~/simbody
 
-    * Do you want to use C++11? By default, Simbody assumes no. If you plan to use Simbody in a project that DOES use C++11, then you must build Simbody with C++11 as well. You can change this via the `SIMBODY_STANDARD_11` variable:
+    * Do you want to use C++11? By default, Simbody assumes yes. If you plan to use Simbody in a project that DOES use C++11, then you must build Simbody with C++11 as well. You can change this via the `SIMBODY_STANDARD_11` variable:
 
-            $ cmake ~/simbody-source -DSIMBODY_STANDARD_11=on
+            $ cmake ~/simbody-source -DSIMBODY_STANDARD_11=off
 
     * Do you want the libraries to be optimized for speed, or to contain debugger symbols? You can change this via the `CMAKE_BUILD_TYPE` variable. There are 4 options:
         - **Debug**: debugger symbols; no optimizations (more than 10x slower). Library names end with `_d`.
@@ -350,7 +354,11 @@ There are two ways to get the source code.
         - **RelWithDebInfo**: debugger symbols; optimized. Bigger but not slower than Release; choose this if unsure.
         - **MinSizeRel**: minimum size; optimized.
 
-        You at least want release libraries (the last 3 count as release), but you can have debug libraries coexist with them. To do this, go through the full installation process twice, once for each configuration. It is typical to use a different build directory for each build type (e.g., `~/simbody-build-debug` and `~/simbody-build-release`). You should install the release configuration *last* to ensure that you use the release version of the `simbody-visualizer` instead of the slow debug version.
+        You at least want release libraries (the last 3 count as release), but
+        you can have debug libraries coexist with them. To do this, go through
+        the full installation process twice, once for each configuration. It is
+        typical to use a different build directory for each build type (e.g.,
+        `~/simbody-build-debug` and `~/simbody-build-release`).
 
     * There are a few other variables you might want to play with:
         * `BUILD_EXAMPLES` to see what Simbody can do. On by default.
@@ -411,18 +419,18 @@ If you are only building Simbody to use it with OpenSim, you can skip this secti
     * If your `CMAKE_INSTALL_PREFIX` is neither `/usr/` nor `/usr/local/` (e.g., `~/simbody`'):
         * Mac:
 
-                $ sudo echo 'export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:~/simbody/lib' > /etc/profile
+                $ echo 'export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:~/simbody/lib' >> ~/.bash_profile
         * Ubuntu:
 
-                $ sudo echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/simbody/lib/x86_64-linux-gnu' > ~/.bashrc
+                $ echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/simbody/lib/x86_64-linux-gnu' >> ~/.bashrc
         These commands add a line to a configuration file that is loaded every time you open a new terminal. If using Ubuntu, you may need to replace `x86_64-linux-gnu` with the appropriate directory on your computer.
 2. Allow Simbody and other projects (e.g., OpenSim) to find Simbody. Make sure to replace `~/simbody` with your `CMAKE_INSTALL_PREFIX`.
     * Mac:
 
-            $ sudo echo 'export SIMBODY_HOME=~/simbody' > /etc/profile
+            $ echo 'export SIMBODY_HOME=~/simbody' >> ~/.bash_profile
     * Ubuntu:
             
-            $ sudo echo 'export SIMBODY_HOME=~/simbody' > ~/.bashrc
+            $ echo 'export SIMBODY_HOME=~/simbody' >> ~/.bashrc
 3. Open a new terminal.
 4. Test your installation:
 
@@ -446,8 +454,9 @@ The installation creates the following directories in `CMAKE_INSTALL_PREFIX`. Th
 [buildstatus_image]: https://travis-ci.org/simbody/simbody.png?branch=master
 [travisci]: https://travis-ci.org/simbody/simbody
 [user]: https://github.com/simbody/simbody/raw/master/Simbody/doc/SimbodyAndMolmodelUserGuide.pdf
-[rna]:https://raw2.github.com/simbody/simbody/master/doc/images/simbios_11000_body_RNA.gif
+[rna]: doc/images/simbios_11000_body_RNA.gif
 [simbios]: http://simbios.stanford.edu/
+[doublePendulum]: doc/images/doublePendulum.gif
 [thy]: https://github.com/simbody/simbody/raw/master/Simbody/doc/SimbodyTheoryManual.pdf
 [flores]: https://simtk.org/forums/memberlist.php?mode=viewprofile&u=482
 [buildwin]: https://github.com/simbody/simbody/raw/master/doc/HowToBuildSimbodyFromSource_Windows.pdf

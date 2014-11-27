@@ -317,7 +317,35 @@ public:
     {   nanValue.resize(v.size()); nanValue.setToNaN(); }
     static void makeZeroLike(const T& v, T& zeroValue)
     {   zeroValue.resize(v.size()); zeroValue.setToZero(); }
+};
 
+
+template <class E>
+class Measure_Num< Rotation_<E> > {
+    typedef Rotation_<E> T;
+public:
+    typedef T Element;
+    static int size(const T&) {return 1;}
+    static const T& get(const T& v, int i) {assert(i==0); return v;}
+    static T& upd(T& v, int i) {assert(i==0); return v;}
+    static void makeNaNLike(const T&, T& nanValue) 
+    {   nanValue.setRotationToNaN(); }
+    static void makeZeroLike(const T&, T& zeroValue) 
+    {   zeroValue.setRotationToIdentityMatrix(); }
+};
+
+template <class E>
+class Measure_Num< Transform_<E> > {
+    typedef Transform_<E> T;
+public:
+    typedef T Element;
+    static int size(const T&) {return 1;}
+    static const T& get(const T& v, int i) {assert(i==0); return v;}
+    static T& upd(T& v, int i) {assert(i==0); return v;}
+    static void makeNaNLike(const T&, T& nanValue) 
+    {   nanValue.setToNaN(); }
+    static void makeZeroLike(const T&, T& zeroValue) 
+    {   zeroValue.setToZero(); }
 };
 
 /** @endcond **/
@@ -344,7 +372,9 @@ public:
         // before this measure's depends-on stage since this will get called
         // towards the end of the depends-on stage realization.
         if (getDependsOnStage(derivOrder) != Stage::Empty) {
+#ifndef NDEBUG
             Stage prevStage = getDependsOnStage(derivOrder).prev();
+#endif
 
             SimTK_ERRCHK2
                 (   ( isInSubsystem() && getStage(s)>=prevStage)
