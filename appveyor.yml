@@ -27,7 +27,7 @@ build_script:
   - MSBuild Simbody.sln /target:ALL_BUILD /p:Configuration=Release /maxcpucount /verbosity:quiet
 
 test_script:
-  - ctest -j8 --build-config Release --output-on-failure
+  - ctest --parallel 8 --build-config Release --output-on-failure
     
 after_test:
   ## On master branch, create NuGet package for Simbody, for use by OpenSim.
