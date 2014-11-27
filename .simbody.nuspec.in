@@ -1,6 +1,3 @@
-<!--For packaging Simbody via NuGet to use in Appveyor testing.
-    Not intended to be used to create a legitimate distribution
-    of Simbody.-->
 <?xml version="1.0"?>
 <package >
   <metadata>
@@ -12,7 +9,7 @@
     <projectUrl>https://github.com/simbody/simbody</projectUrl>
     <iconUrl>https://simtk.org/api_docs/simbody/api_docs33/Simbody/html/isaac.png</iconUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <description>High-performance C++ multibody dynamics/physics library for simulating articulated biomechanical and mechanical systems like vehicles, robots, and the human skeleton.</description>
+    <description>High-performance C++ multibody dynamics/physics library for simulating articulated biomechanical and mechanical systems like vehicles, robots, and the human skeleton. This package is for use in Appveyor testing. It is not a proper distribution of Simbody.</description>
     <releaseNotes>https://github.com/simbody/simbody/releases</releaseNotes>
     <copyright>Copyright 2014</copyright>
     <tags>multibody dynamics biomechanics robotics</tags>
