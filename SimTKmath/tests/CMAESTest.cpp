@@ -117,7 +117,7 @@ void testMaxIterations() {
     // Create optimizer; set settings.
     Optimizer opt(sys, SimTK::CMAES);
     opt.setConvergenceTolerance(1e-12);
-    opt.setAdvancedRealOption("sigma", 0.3);
+    opt.setAdvancedRealOption("init_stepsize", 0.3);
     opt.setMaxIterations(500);
 
     // Optimize!
@@ -143,7 +143,7 @@ void testCigtabOptimum() {
     Optimizer opt(sys, SimTK::CMAES);
     opt.setConvergenceTolerance(1e-12);
     opt.setMaxIterations(5000);
-    opt.setAdvancedRealOption("sigma", 0.3);
+    opt.setAdvancedRealOption("init_stepsize", 0.3);
     // Sometimes this test fails, so choose a seed where the test passes.
     opt.setAdvancedIntOption("seed", 42);
     opt.setAdvancedRealOption("maxTimeFractionForEigendecomposition", 1);
@@ -170,7 +170,7 @@ void testParameterLimits() {
             SimTK::Exception::ErrorCheck);
 }
 
-// Make sure that we are able to set sigma (step size) using Simbody's
+// Make sure that we are able to set init_stepsize (sigma) using Simbody's
 // interface, and that with appropriate step size, we can find the optimum of
 // Ackley's function.
 void testSigmaAndAckleyOptimum() {
@@ -187,12 +187,12 @@ void testSigmaAndAckleyOptimum() {
     Optimizer opt(sys, SimTK::CMAES);
     opt.setConvergenceTolerance(1e-12);
     opt.setMaxIterations(5000);
-    opt.setAdvancedIntOption("lambda", 50);
+    opt.setAdvancedIntOption("popsize", 50);
     opt.setAdvancedIntOption("seed", 30);
     opt.setAdvancedRealOption("maxTimeFractionForEigendecomposition", 1);
 
-    // Default sigma (step size) leaves us in a local minimum.
-    // =======================================================
+    // Default init_stepsize leaves us in a local minimum.
+    // ===================================================
 
     // Optimize!
     Real f1 = opt.optimize(results);
@@ -205,8 +205,8 @@ void testSigmaAndAckleyOptimum() {
 
     // Can find the optimum with an appropriate step size.
     // ===================================================
-    // sigma should be 1/4 the range of possible values.
-    opt.setAdvancedRealOption("sigma", 0.5 * 64);
+    // init_stepsize should be 1/4 the range of possible values.
+    opt.setAdvancedRealOption("init_stepsize", 0.5 * 64);
 
     // Optimize!  Can now find the solution.
     results.setTo(25);
@@ -228,10 +228,10 @@ void testDropWaveOptimumLambda() {
     Optimizer opt(sys, SimTK::CMAES);
     opt.setConvergenceTolerance(1e-5);
     opt.setMaxIterations(5000);
-    opt.setAdvancedRealOption("sigma", 3.5);
-    // With default lambda, this test fails. So if this test passes, we know we
-    // can set lambda.
-    opt.setAdvancedIntOption("lambda", 1000);
+    opt.setAdvancedRealOption("init_stepsize", 3.5);
+    // With default popsize, this test fails. So if this test passes, we know we
+    // can set popsize.
+    opt.setAdvancedIntOption("popsize", 1000);
     // Sometimes, we need more function evaluations.
     opt.setAdvancedIntOption("stopMaxFunEvals", 100000);
     opt.setAdvancedIntOption("seed", 10);
@@ -252,7 +252,7 @@ void testMaxFunEvals() {
     // Create optimizer; set settings.
     Optimizer opt(sys, SimTK::CMAES);
     opt.setConvergenceTolerance(1e-12);
-    opt.setAdvancedRealOption("sigma", 0.3);
+    opt.setAdvancedRealOption("init_stepsize", 0.3);
     opt.setAdvancedIntOption("seed", 10);
     opt.setAdvancedRealOption("maxTimeFractionForEigendecomposition", 1);
     
@@ -286,7 +286,7 @@ void testSeed() {
     // Create optimizer; set settings.
     Optimizer opt(sys, SimTK::CMAES);
     opt.setConvergenceTolerance(1e-12);
-    opt.setAdvancedRealOption("sigma", 1);
+    opt.setAdvancedRealOption("init_stepsize", 1);
     
     // A negative seed causes an exception to be thrown upon optimization.
     // ===================================================================
@@ -422,7 +422,7 @@ void testRosenbrock() {
     Optimizer opt(sys, SimTK::CMAES);
     opt.setConvergenceTolerance(1e-12);
     opt.setMaxIterations(100000);
-    opt.setAdvancedRealOption("sigma", 0.3);
+    opt.setAdvancedRealOption("init_stepsize", 0.3);
     opt.setAdvancedIntOption("seed", 42);
     opt.setAdvancedRealOption("maxTimeFractionForEigendecomposition", 1);
 
@@ -443,8 +443,8 @@ void testSchwefel() {
     Optimizer opt(sys, SimTK::CMAES);
     // Only know the solution to 4 digits.
     opt.setConvergenceTolerance(1e-4);
-    opt.setAdvancedIntOption("lambda", 200);
-    opt.setAdvancedRealOption("sigma", 300);
+    opt.setAdvancedIntOption("popsize", 200);
+    opt.setAdvancedRealOption("init_stepsize", 300);
     opt.setAdvancedIntOption("seed", 42);
     opt.setAdvancedRealOption("maxTimeFractionForEigendecomposition", 1);
     
@@ -464,8 +464,8 @@ void testEasom() {
     // Create optimizer; set settings.
     Optimizer opt(sys, SimTK::CMAES);
     // opt.setDiagnosticsLevel(3);
-    opt.setAdvancedIntOption("lambda", 500);
-    opt.setAdvancedRealOption("sigma", 25);
+    opt.setAdvancedIntOption("popsize", 500);
+    opt.setAdvancedRealOption("init_stepsize", 25);
     opt.setAdvancedIntOption("seed", 42);
     opt.setAdvancedRealOption("maxTimeFractionForEigendecomposition", 1);
     
@@ -488,8 +488,8 @@ void testStopFitness() {
     // opt.setDiagnosticsLevel(2);
     opt.setConvergenceTolerance(1e-12);
     opt.setMaxIterations(5000);
-    opt.setAdvancedIntOption("lambda", 50);
-    opt.setAdvancedRealOption("sigma", 0.5 * 64);
+    opt.setAdvancedIntOption("popsize", 50);
+    opt.setAdvancedRealOption("init_stepsize", 0.5 * 64);
     opt.setAdvancedIntOption("seed", 30);
     opt.setAdvancedRealOption("maxTimeFractionForEigendecomposition", 1);
 
@@ -518,7 +518,7 @@ void testMultithreading() {
     Optimizer opt(sys, SimTK::CMAES);
     opt.setConvergenceTolerance(1e-12);
     opt.setMaxIterations(5000);
-    opt.setAdvancedRealOption("sigma", 0.3);
+    opt.setAdvancedRealOption("init_stepsize", 0.3);
     // Sometimes this test fails, so choose a seed where the test passes.
     opt.setAdvancedIntOption("seed", 42);
     opt.setAdvancedRealOption("maxTimeFractionForEigendecomposition", 1);
@@ -546,7 +546,7 @@ void testMPI()
     opt.setConvergenceTolerance(1e-12);
     // opt.setDiagnosticsLevel(1);
     opt.setMaxIterations(5000);
-    opt.setAdvancedRealOption("sigma", 0.3);
+    opt.setAdvancedRealOption("init_stepsize", 0.3);
     // Sometimes this test fails, so choose a seed where the test passes.
     opt.setAdvancedIntOption("seed", 42);
     opt.setAdvancedRealOption("maxTimeFractionForEigendecomposition", 1);
@@ -591,7 +591,7 @@ void testRestart()
     Optimizer opt(sys, SimTK::CMAES);
     opt.setConvergenceTolerance(1e-12);
     // opt.setDiagnosticsLevel(2);
-    opt.setAdvancedRealOption("sigma", 0.3);
+    opt.setAdvancedRealOption("init_stepsize", 0.3);
     opt.setAdvancedIntOption("seed", 42);
     opt.setAdvancedRealOption("maxTimeFractionForEigendecomposition", 1);
 
@@ -636,11 +636,11 @@ void testRestart()
     Real f4 = opt.optimize(results);
     SimTK_TEST_EQ_TOL(fWhenResuming, f4, 1e-3);
 
-    // Setting sigma programmatically should not make a difference.
-    opt.setAdvancedRealOption("sigma", 500);
+    // Setting init_stepsize programmatically should not make a difference.
+    opt.setAdvancedRealOption("init_stepsize", 500);
     Real f5 = opt.optimize(results);
     SimTK_TEST_EQ_TOL(fWhenResuming, f5, 1e-3);
-    opt.setAdvancedRealOption("sigma", 0.3);
+    opt.setAdvancedRealOption("init_stepsize", 0.3);
 
     // No longer resume. Start anew. Test the ability to turn OFF resuming in
     // subsequent optimizations.
