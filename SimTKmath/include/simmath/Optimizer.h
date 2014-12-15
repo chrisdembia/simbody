@@ -318,6 +318,9 @@ private:
  * - Hansen's c-cmaes is typically configured via the cmaes_initials.par and
  *   cmaes_signals.par files. We currently do not allow the use of either of
  *   these files; all configuration is done via methods of Optimizer.
+ * - c-cmaes appends outputs to existing files. For example, if actparcmaes.par
+ *   already exists, then c-cmaes appends information to this file for this
+ *   optimization run. This is true for the resume fiel as well (see below).
  *
  * Advanced options:
  * 
@@ -350,10 +353,11 @@ private:
  *   tutorial. If this optimization run should resume from the state of a
  *   previous optimization, set this option to be true. This requires the
  *   presence of a resume file; specify the name of this file via the
- *   <b>resume_filename</b> option.  See <b>write_resume_file</b> for how you
+ *   <b>resume_filename</b> option. See <b>write_resume_file</b> for how you
  *   generate such a resume file. When resuming, the initial guess and sigma
  *   are set from the resume file, so the initial guess and the <b>sigma</b>
- *   advanced option have no effect.
+ *   advanced option have no effect. Only the last entry of the resume file is
+ *   used.
  * - <b>resume_filename</b> (str; default: resumecmaes.dat) Name of the resume
  *   file to use if <b>resume</b> is true.
  * - <b>write_resume_file</b> (bool; default: false) If you want to resume the
