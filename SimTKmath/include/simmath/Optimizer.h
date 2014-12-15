@@ -348,16 +348,16 @@ private:
  *   more than stopTolUpXFactor.
  * - <b>resume</b> (bool; default: false) c-cmaes allows one to restart/resume
  *   an optimization that you have performed previously. Sometimes, this is an
- *   important part of how CMA-ES is used. Also, it is common to increase sigma
- *   before resuming by editing "sigma" in the resume file; see Hansen's
- *   tutorial. If this optimization run should resume from the state of a
- *   previous optimization, set this option to be true. This requires the
- *   presence of a resume file; specify the name of this file via the
- *   <b>resume_filename</b> option. See <b>write_resume_file</b> for how you
- *   generate such a resume file. When resuming, the initial guess and sigma
- *   are set from the resume file, so the initial guess and the <b>sigma</b>
- *   advanced option have no effect. Only the last entry of the resume file is
- *   used.
+ *   important part of how CMA-ES is used. Also, it is common to increase the
+ *   initial sep size (sigma) before resuming by editing "sigma" in the resume
+ *   file; see Hansen's tutorial. If this optimization run should resume from
+ *   the state of a previous optimization, set this option to be true. This
+ *   requires the presence of a resume file; specify the name of this file via
+ *   the <b>resume_filename</b> option. See <b>write_resume_file</b> for how
+ *   you generate such a resume file. When resuming, the initial guess and
+ *   the initial step size are set from the resume file, so the initial guess
+ *   and the <b>sigma</b> advanced option have no effect. Only the last entry
+ *   of the resume file is used.
  * - <b>resume_filename</b> (str; default: resumecmaes.dat) Name of the resume
  *   file to use if <b>resume</b> is true.
  * - <b>write_resume_file</b> (bool; default: false) If you want to resume the

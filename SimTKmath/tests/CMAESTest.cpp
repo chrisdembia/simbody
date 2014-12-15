@@ -546,7 +546,7 @@ void testMPI()
     opt.setConvergenceTolerance(1e-12);
     // opt.setDiagnosticsLevel(1);
     opt.setMaxIterations(5000);
-    opt.setAdvancedRealOption("sigma", 0.3);
+    opt.setAdvancedRealOption("init_stepsize", 0.3);
     // Sometimes this test fails, so choose a seed where the test passes.
     opt.setAdvancedIntOption("seed", 42);
     opt.setAdvancedRealOption("maxTimeFractionForEigendecomposition", 1);
@@ -591,7 +591,7 @@ void testRestart()
     Optimizer opt(sys, SimTK::CMAES);
     opt.setConvergenceTolerance(1e-12);
     // opt.setDiagnosticsLevel(2);
-    opt.setAdvancedRealOption("sigma", 0.3);
+    opt.setAdvancedRealOption("init_stepsize", 0.3);
     opt.setAdvancedIntOption("seed", 42);
     opt.setAdvancedRealOption("maxTimeFractionForEigendecomposition", 1);
 
@@ -636,11 +636,11 @@ void testRestart()
     Real f4 = opt.optimize(results);
     SimTK_TEST_EQ_TOL(fWhenResuming, f4, 1e-3);
 
-    // Setting sigma programmatically should not make a difference.
-    opt.setAdvancedRealOption("sigma", 500);
+    // Setting init_stepsize programmatically should not make a difference.
+    opt.setAdvancedRealOption("init_stepsize", 500);
     Real f5 = opt.optimize(results);
     SimTK_TEST_EQ_TOL(fWhenResuming, f5, 1e-3);
-    opt.setAdvancedRealOption("sigma", 0.3);
+    opt.setAdvancedRealOption("init_stepsize", 0.3);
 
     // No longer resume. Start anew. Test the ability to turn OFF resuming in
     // subsequent optimizations.
