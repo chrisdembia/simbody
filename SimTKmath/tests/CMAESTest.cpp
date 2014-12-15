@@ -544,7 +544,7 @@ void testMPI()
     // Create optimizer; set settings.
     Optimizer opt(sys, SimTK::CMAES);
     opt.setConvergenceTolerance(1e-12);
-    opt.setDiagnosticsLevel(1);
+    // opt.setDiagnosticsLevel(1);
     opt.setMaxIterations(5000);
     opt.setAdvancedRealOption("sigma", 0.3);
     // Sometimes this test fails, so choose a seed where the test passes.
@@ -580,7 +580,6 @@ void testRestart()
 
     const Real fWhenResuming = 22.8012;
 
-    // TODO does setting an initial guess have an effect?
     Cigtab sys(3);
     int N = sys.getNumParameters();
 
@@ -591,7 +590,7 @@ void testRestart()
     // Create optimizer; set settings.
     Optimizer opt(sys, SimTK::CMAES);
     opt.setConvergenceTolerance(1e-12);
-    opt.setDiagnosticsLevel(2); // TODO
+    // opt.setDiagnosticsLevel(2);
     opt.setAdvancedRealOption("sigma", 0.3);
     opt.setAdvancedIntOption("seed", 42);
     opt.setAdvancedRealOption("maxTimeFractionForEigendecomposition", 1);
