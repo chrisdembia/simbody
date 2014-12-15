@@ -315,6 +315,9 @@ private:
  *          - allcmaes.dat contains detailed information about the progress of
  *            the optimization.
  *      - 3: both 1 and 2 (output to console and files are written).
+ * - Hansen's c-cmaes is typically configured via the cmaes_initials.par and
+ *   cmaes_signals.par files. We currently do not allow the use of either of
+ *   these files; all configuration is done via methods of Optimizer.
  *
  * Advanced options:
  * 
@@ -343,12 +346,14 @@ private:
  * - <b>resume</b> (bool; default: false) c-cmaes allows one to restart/resume
  *   an optimization that you have performed previously. Sometimes, this is an
  *   important part of how CMA-ES is used. Also, it is common to increase sigma
- *   before resuming; see Hansen's tutorial. If this optimization run should
- *   resume from the state of a previous optimization, set this option to be
- *   true. This requires the presence of a resume
- *   file; specify the name of this file via the <b>resume_filename</b> option.
- *   See <b>write_resume_file</b> for how you generate such a resume file.
- *   TODO when resuming, does initial guess have an effect?
+ *   before resuming by editing "sigma" in the resume file; see Hansen's
+ *   tutorial. If this optimization run should resume from the state of a
+ *   previous optimization, set this option to be true. This requires the
+ *   presence of a resume file; specify the name of this file via the
+ *   <b>resume_filename</b> option.  See <b>write_resume_file</b> for how you
+ *   generate such a resume file. When resuming, the initial guess and sigma
+ *   are set from the resume file, so the initial guess and the <b>sigma</b>
+ *   advanced option have no effect.
  * - <b>resume_filename</b> (str; default: resumecmaes.dat) Name of the resume
  *   file to use if <b>resume</b> is true.
  * - <b>write_resume_file</b> (bool; default: false) If you want to resume the
@@ -373,7 +378,7 @@ private:
  * <i> Reproducible output and seeds </i>
  *
  * If you want to generate identical results with repeated optimizations for
- * the same problem, you can set the <b>seed</b> option. In addtion, you *must*
+ * the same problem, you can set the <b>seed</b> option. In addtion, you MUST
  * set the <b>maxTimeFractionForEigendecomposition</b> option to be greater or
  * equal to 1.0.
  *
@@ -385,7 +390,7 @@ private:
  * <i> MPI: Message Passing Interface </i>
  *
  * You can use MPI to run an optimization across multiple processors on a
- * computing cluster. You can also use MPI on your local machine; if you *only*
+ * computing cluster. You can also use MPI on your local machine; if you ONLY
  * plan on using parallelism locally, you should use multithreading instead
  * (just because it's simpler). With MPI, your entire executable is spawned on
  * multiple processes. This is significantly different from multithreading, in
