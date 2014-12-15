@@ -24,7 +24,8 @@
 // TODO
 // restarts
 // file reading/writing (signals). 
-//
+// test diagnostics levels: that allcmaes.dat and actparcmaes.par are written
+//      out.
 
 #include "SimTKmath.h"
 #include "OptimizerSystems.h"
@@ -34,8 +35,9 @@
 #endif
 
 #include <iostream>
-using std::cout;
-using std::endl;
+#include <fstream>
+#include <cstdio>
+
 using SimTK::Vector;
 using SimTK::Real;
 using SimTK::Optimizer;
@@ -64,6 +66,10 @@ bool vectorsAreEqual(const Vector& actual, const Vector& expected, double tol,
         }
     }
     return isEqual;
+}
+
+bool exists(const std::string& filename) {
+    return std::ifstream(filename).good();
 }
 
 #define SimTK_TEST_OPT(opt, results, tol) \
@@ -528,7 +534,6 @@ void testMultithreading() {
 
 void testMPI()
 {
-
     Cigtab sys(3);
     int N = sys.getNumParameters();
 
@@ -569,6 +574,123 @@ void testMPI()
     #endif
 }
 
+void testRestart()
+{
+    if (exists("resumecmaes.dat")) { remove("resumecmaes.dat"); }
+
+    const Real fWhenResuming = 22.8012;
+
+    // TODO does setting an initial guess have an effect?
+    Cigtab sys(3);
+    int N = sys.getNumParameters();
+
+    // set initial conditions.
+    Vector results(N);
+    results.setTo(0.5);
+
+    // Create optimizer; set settings.
+    Optimizer opt(sys, SimTK::CMAES);
+    opt.setConvergenceTolerance(1e-12);
+    opt.setDiagnosticsLevel(2); // TODO
+    opt.setAdvancedRealOption("sigma", 0.3);
+    opt.setAdvancedIntOption("seed", 42);
+    opt.setAdvancedRealOption("maxTimeFractionForEigendecomposition", 1);
+
+    // Get result for optimizing through 100 iterations (for after resuming).
+    opt.setMaxIterations(6);
+    Real f0 = opt.optimize(results);
+
+
+    // First with default filenames.
+    // -----------------------------
+    // Choose very few iterations, in order to be able to test resuming.
+    opt.setMaxIterations(3);
+
+    // Run a simulation that will generate a resume file.
+    opt.setAdvancedBoolOption("write_resume_file", true);
+    results.setTo(0.5);
+    Real f1 = opt.optimize(results);
+    SimTK_TEST_NOTEQ(f0, f1);
+    opt.setAdvancedBoolOption("write_resume_file", false);
+
+    // Run a second optimization, which will NOT resume.
+    results.setTo(0.5);
+    Real f2 = opt.optimize(results);
+    SimTK_TEST_EQ(f1, f2);
+
+    // Resume optimization: conduct the remaining iterations.
+    opt.setAdvancedBoolOption("resume", true);
+    Real f3 = opt.optimize(results);
+    // How did I get 22.8012? I manually ensured that running with resume cuts
+    // down on the necessary subsequent function evaluations (with 1000 max
+    // iterations for f0, and 80 max iterations for f1 and f2, there are about
+    // 1200 function evaluations for f0 and 500 for f1, f2, and f3). I then
+    // observed what the resulting final objective function value was, and
+    // hardcoded it below. This is an indirect way to check that resuming still
+    // works.
+    // f0 will not be the same as f3, because the resume data is not printed
+    // out to machine precision.
+    SimTK_TEST_EQ_TOL(fWhenResuming, f3, 1e-3);
+
+    // Setting initial guess should not make a difference.
+    results.setTo(0.25);
+    Real f4 = opt.optimize(results);
+    SimTK_TEST_EQ_TOL(fWhenResuming, f4, 1e-3);
+
+    // Setting sigma programmatically should not make a difference.
+    opt.setAdvancedRealOption("sigma", 500);
+    Real f5 = opt.optimize(results);
+    SimTK_TEST_EQ_TOL(fWhenResuming, f5, 1e-3);
+    opt.setAdvancedRealOption("sigma", 0.3);
+
+    // No longer resume. Start anew. Test the ability to turn OFF resuming in
+    // subsequent optimizations.
+    opt.setAdvancedBoolOption("resume", false);
+    results.setTo(0.5);
+    Real f6 = opt.optimize(results);
+    SimTK_TEST_EQ(f1, f6);
+
+    // Make sure that the previous turning-off of write_resume_file is
+    // working.
+    if (exists("resumecmaes.dat")) { remove("resumecmaes.dat"); }
+    opt.optimize(results);
+    SimTK_TEST(!exists("resumecmaes.dat"));
+
+
+    // Custom file names.
+    // ------------------
+    const std::string time(std::to_string(SimTK::realTime()));
+    const std::string resume_fname = "cmaes_resume_" + time + ".dat";
+    // Have CMAES generate a custom file.
+    opt.setAdvancedBoolOption("write_resume_file", true);
+    opt.setAdvancedStrOption("write_resume_filename", resume_fname.c_str());
+    results.setTo(0.5);
+    Real f7 = opt.optimize(results);
+    SimTK_TEST_EQ(f1, f7);
+    opt.setAdvancedBoolOption("write_resume_file", false);
+
+    // Setting a custom write filename does not cause resuming.
+    results.setTo(0.5);
+    Real f8 = opt.optimize(results);
+    SimTK_TEST_EQ(f7, f8);
+
+    // Trying to resume will throw an exception, b/c resumecmaes.dat doesn't
+    // exist.
+    if (exists("resumecmaes.dat")) { remove("resumecmaes.dat"); }
+    opt.setAdvancedBoolOption("resume", true);
+    SimTK_TEST_MUST_THROW_EXC(opt.optimize(results),
+            SimTK::Exception::ErrorCheck
+            );
+
+    // Setting resume_filename allows resuming.
+    opt.setAdvancedStrOption("resume_filename", resume_fname.c_str());
+    Real f9 = opt.optimize(results);
+    SimTK_TEST_EQ_TOL(fWhenResuming, f9, 1e-3);
+
+    // Clean up.
+    remove(resume_fname.c_str());
+}
+
 int main() {
     SimTK_START_TEST("CMAES");
 
@@ -588,7 +710,7 @@ int main() {
         SimTK_SUBTEST(testStopFitness);
         SimTK_SUBTEST(testMultithreading);
         SimTK_SUBTEST(testMPI);
-        // TODO        testRestart();
+        SimTK_SUBTEST(testRestart);
 
     SimTK_END_TEST();
 }

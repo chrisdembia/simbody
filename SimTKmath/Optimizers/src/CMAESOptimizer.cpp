@@ -24,6 +24,7 @@
 #include "CMAESOptimizer.h"
 
 #include <bitset>
+#include <fstream>
 
 namespace SimTK {
 
@@ -215,6 +216,15 @@ Real CMAESOptimizer::master(SimTK::Vector& results, const bool& useMPI)
     SimTK_CMAES_FILE(diagnosticsLevel,
             cmaes_WriteToFile(&evo, "all", "allcmaes.dat"));
 
+    // Write resume file.
+    bool write_resume_file = false;
+    getAdvancedBoolOption("write_resume_file", write_resume_file);
+    if (write_resume_file) {
+        std::string write_resume_filename = "resumecmaes.dat";
+        getAdvancedStrOption("write_resume_filename", write_resume_filename);
+        cmaes_WriteToFile(&evo, "resume", write_resume_filename.c_str());
+    }
+
     // Free memory.
     cmaes_exit(&evo);
     
@@ -274,7 +284,11 @@ double* CMAESOptimizer::init(cmaes_t& evo, SimTK::Vector& results) const
 
     // input parameter filename
     // ------------------------
+    // Instead of specifying options via a file, we set the options directly
+    // in the evo.sp readpara_t struct (see process_readpara_settings()).
     std::string input_parameter_filename = "none";
+    // "writeonly" causes actparcmaes.par to be written to file, which contains
+    // the parameters actually being used.
     SimTK_CMAES_FILE(diagnosticsLevel,
             input_parameter_filename = "writeonly";);
 
@@ -359,6 +373,21 @@ void CMAESOptimizer::process_readpara_settings(cmaes_t& evo) const
     if (getAdvancedRealOption("maxTimeFractionForEigendecomposition", maxtime))
     {
         evo.sp.updateCmode.maxtime = maxtime;
+    }
+
+    // resume filename
+    // ===============
+    bool resume = false;
+    getAdvancedBoolOption("resume", resume);
+    if (resume) {
+        std::string resume_filename = "resumecmaes.dat";
+        getAdvancedStrOption("resume_filename", resume_filename);
+        // Make sure this file exists.
+        SimTK_ERRCHK1_ALWAYS(std::ifstream(resume_filename).good(),
+                "Optimizer::setAdvancedStrOption",
+                "Resume file '%s' not found or could not be read.",
+                resume_filename.c_str());
+        strcpy(evo.sp.resumefile, resume_filename.c_str());
     }
 }
 
