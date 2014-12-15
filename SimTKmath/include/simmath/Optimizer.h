@@ -281,8 +281,9 @@ private:
  * <h4> CMAES </h4>
  *
  * This is the c-cmaes algorithm written by Niko Hansen
- * (https://github.com/cma-es/c-cmaes).  For an example of usage, see the
- * CMAESOptimization.cpp example.
+ * (https://github.com/cma-es/c-cmaes). To learn about the algorithm, read
+ * Hansen's tutorial (https://www.lri.fr/~hansen/cmatutorial.pdf). For an
+ * example of usage, see the CMAESOptimization.cpp example.
  *
  * Some notes:
  * - This algorithm obeys parameter limits.
@@ -303,7 +304,8 @@ private:
  *      - OptimizerSystem::setNumInequalityConstraints
  *      - OptimizerSystem::setNumLinearEqualityConstraints
  *      - OptimizerSystem::setNumLinearInequalityConstraints
- * - The effect of the diagnostics level is as follows:
+ * - The effect of the diagnostics level (see Optimizer::setDiagnosticsLevel)
+ *   is as follows:
  *      - 0: minimal output to console (warnings, errors), some files are
  *        written to the current directory (errcmaes.err error log).
  *      - 1: maximum output to console (including MPI information).
@@ -328,7 +330,7 @@ private:
  *   distribution. See note below.
  * - <b>maxTimeFractionForEigendecomposition</b> (real; default: 0.2)
  *   Controls the amount of time spent generating eigensystem
- *   decompositions.
+ *   decompositions. Affects the reproducibility of a solution.
  * - <b>stopMaxFunEvals</b> (int) Stop optimization after this
  *   number of evaluations of the objective function.
  * - <b>stopFitness</b> (real) Stop if function value is smaller than
@@ -338,22 +340,41 @@ private:
  * - <b>stopTolX</b> (real) Stop if step sizes are smaller than stopTolX.
  * - <b>stopTolUpXFactor</b> (real) Stop if standard deviation increases by
  *   more than stopTolUpXFactor.
+ * - <b>resume</b> (bool; default: false) c-cmaes allows one to restart/resume
+ *   an optimization that you have performed previously. Sometimes, this is an
+ *   important part of how CMA-ES is used. Also, it is common to increase sigma
+ *   before resuming; see Hansen's tutorial. If this optimization run should
+ *   resume from the state of a previous optimization, set this option to be
+ *   true. This requires the presence of a resume
+ *   file; specify the name of this file via the <b>resume_filename</b> option.
+ *   See <b>write_resume_file</b> for how you generate such a resume file.
+ *   TODO when resuming, does initial guess have an effect?
+ * - <b>resume_filename</b> (str; default: resumecmaes.dat) Name of the resume
+ *   file to use if <b>resume</b> is true.
+ * - <b>write_resume_file</b> (bool; default: false) If you want to resume the
+ *   current optimization in the future, you must ask c-cmaes to write a resume
+ *   file. Do this by setting this option to be true. This file will contain
+ *   the state of a previously-conducted c-cmaes optimization.
+ * - <b>write_resume_filename</b> (str; default: resumecmaes.dat) Name of the
+ *   resume file to write at the end of the optimization. Presumably, you will
+ *   later use the same filename as the value for <b>resume_filename</b>.
  * - <b>parallel</b> (str) To run the optimization with multiple threads, set
  *   this to "multithreading". Only use multithreading if your OptimizerSystem
  *   is threadsafe: you can't reliably modify any mutable variables in your
- *   OptimizerSystem::objectiveFun(). To run the optimization in parallel on a
+ *   OptimizerSystem::objectiveFunc. To run the optimization in parallel on a
  *   cluster, set this to "mpi"; the objective function will be evaluated
- *   across multiple processes. To use MPI, you must have compiled Simbody with
- *   the CMake variable SIMBODY_ENABLE_MPI set to ON. See notes below.
+ *   across multiple processes. See notes below.
  * - <b>nthreads</b> (int) If the <b>parallel</b> option is set to
  *   "multithreading", this is the number of threads to use (by default, this
- *   is the number of processors/threads on the machine).
+ *   is the number of threads on the machine). If using MPI, the
+ *   number of processors is controlled via an argument to <tt>mpiexec</tt>,
+ *   <tt>mpirun</tt>, etc.; not here.
  *
  * <i> Reproducible output and seeds </i>
  *
- * If you want to generate identical results with repeated optimizations for,
- * you can set the <b>seed</b> option. In addtion, you *must* set the
- * <b>maxTimeFractionForEigendecomposition</b> option to be greater or
+ * If you want to generate identical results with repeated optimizations for
+ * the same problem, you can set the <b>seed</b> option. In addtion, you *must*
+ * set the <b>maxTimeFractionForEigendecomposition</b> option to be greater or
  * equal to 1.0.
  *
  * @code
@@ -364,22 +385,25 @@ private:
  * <i> MPI: Message Passing Interface </i>
  *
  * You can use MPI to run an optimization across multiple processors on a
- * computing cluster. You can also use MPI on your local machine, but in this
- * case you should use multithreading instead. With MPI, your entire executable
- * is spawned on multiple processes. This is significantly different from
- * multithreading, in which there is only one process.
+ * computing cluster. You can also use MPI on your local machine; if you *only*
+ * plan on using parallelism locally, you should use multithreading instead
+ * (just because it's simpler). With MPI, your entire executable is spawned on
+ * multiple processes. This is significantly different from multithreading, in
+ * which there is only one process.
  *
  * Within optimize(), one of the processes--the master node--manages the
  * overall optimization while the other nodes--the worker nodes--evaluate the
  * objective function for the master node. In each process, the call to
  * <tt>optimize()</tt> returns at approximately the same time. Each process
  * returns the solution (<tt>f</tt>, and <tt>results</tt>).  However, you
- * probably only want to process this solution on the master node. See the code
- * snippet below to see how to manage this.
+ * probably only want to work with this solution on the master node. See the
+ * code snippet below to see how to manage this.
  *
- * Using MPI requires some additional effort on your part.
- * You must initialize MPI before calling <tt>optimize()</tt>, and you must
- * finalize MPI afterwards. Your code may look something like this:
+ * Using MPI requires some additional effort on your part. First, you must
+ * install an MPI library and you must have compiled Simbody with the CMake
+ * variable SIMBODY_ENABLE_MPI set to ON.  In your own code, you must
+ * initialize MPI before calling <tt>optimize()</tt>, and you must finalize MPI
+ * afterwards. Your code may look something like this:
  *
  * @code
  * #include <mpi.h>
