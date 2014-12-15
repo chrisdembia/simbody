@@ -31,14 +31,36 @@
 
 namespace SimTK {
 
+/**
+ * The available Optimizer algorithms.
+ * Gradient descent algorithms seek to find a local minimum, and are not
+ * guaranteed to find the global minimum. See the description of Optimizer for
+ * specific information about how to use the algorithms.
+ */
 enum OptimizerAlgorithm {
-     BestAvailable = 0, // Simmath will select best Optimizer based on problem type
-     InteriorPoint = 1, // IPOPT interior point optimizer
-     LBFGS         = 2, // LBFGS optimizer
-     LBFGSB        = 3, // LBFGS optimizer with simple bounds
-     CFSQP         = 4, // CFSQP sequential quadratic programming optimizer (requires external library)
-     UnknownOptimizerAlgorithm = 5, // the default
-     UserSuppliedOptimizerAlgorithm = 6
+     /// Simmath will select best Optimizer based on problem type.
+     BestAvailable = 0,
+     /// IpOpt algorithm (https://projects.coin-or.org/ipopt);
+     /// gradient descent.
+     InteriorPoint = 1,
+     /// Limited-memory Broyden-Fletcher-Goldfarb-Shanno algorithm; 
+     /// gradient descent.
+     LBFGS         = 2,
+     /// LBFGS with simple bound constraints;
+     /// gradient descent.
+     LBFGSB        = 3,
+     /// C implementation of sequential quadratic programming
+     /// (requires external library:
+     /// ftp://frcatel.fri.uniza.sk/pub/soft/math/matprog/doc/fsqp.html);
+     /// gradient descent.
+     CFSQP         = 4,
+     /// Covariance matrix adaptation, evolution strategy
+     /// (https://github.com/cma-es/c-cmaes);
+     /// this is a randomized algorithm that attempts to find a global minimum.
+     CMAES         = 5,
+     UnknownOptimizerAlgorithm = 6, // the default impl. of getAlgorithm.
+     /// An algorithm that is implemented outside of Simmath.
+     UserSuppliedOptimizerAlgorithm = 7
 };
 
 /**
@@ -71,6 +93,7 @@ public:
     }
 
     /// Objective/cost function which is to be optimized; return 0 when successful.
+    /// The value of f upon entry into the function is undefined.
     /// This method must be supplied by concrete class.
     virtual int objectiveFunc      ( const Vector& parameters, 
                                  bool new_parameters, Real& f ) const {
@@ -222,23 +245,199 @@ private:
 
 /**
  * API for SimTK Simmath's optimizers.
- * An optimizer finds a local minimum to an objective function. The
- * optimizer can be constrained to search for a minimum within a feasible 
- * region. The feasible region can be defined by setting limits on the 
- * parameters of the objective function and/or supplying constraint 
- * functions that must be satisfied. 
- * The optimizer starts searching for a minimum beginning at a user supplied 
+ * An optimizer finds a minimum to an objective function. Usually, this minimum
+ * is a local minimum. Some algorithms, like CMAES, are designed to find the
+ * global minumum. The optimizer can be constrained to search for a minimum
+ * within a feasible region. The feasible region is defined in two ways: via
+ * limits on the parameters of the objective function; and, for algorithms
+ * other than CMAES, by supplying constraint functions that must be satisfied.
+ * The optimizer starts searching for a minimum beginning at a user supplied
  * initial value for the set of parameters.
  *
  * The objective function and constraints are specified by supplying the
  * Optimizer with a concrete implemenation of an OptimizerSystem class.
- * The OptimizerSystem can be passed to the Optimizer either through the 
- * Optimizer constructor or by calling the setOptimizerSystem method.  
- * The Optimizer class will select the best optimization algorithm to solve the
- * problem based on the constraints supplied by the OptimizerSystem. 
+ * The OptimizerSystem can be passed to the Optimizer either through the
+ * Optimizer constructor or by calling the Optimizer::setOptimizerSystem
+ * method.  The Optimizer class will select the best optimization algorithm to
+ * solve the problem based on the constraints supplied by the OptimizerSystem.
  * A user can also override the optimization algorithm selected by the
- * Optimizer by specifying the optimization algorithm. 
- *  
+ * Optimizer by specifying the optimization algorithm.
+ *
+ * <h3> Optimization algorithms and advanced options </h3>
+ *
+ * See OptimizerAlgorithm for a brief description of the available algorithms.
+ * Most of these algorithms have options that are specific to the algorithm.
+ * These options are set via methods like Optimizer::setAdvancedStrOption. If
+ * you want to get going quickly, you can just use the default values of these
+ * options and ignore this section. As an example, an int option
+ * <b>lambda</b> would be set via:
+ *
+ * @code
+ * opt.setAdvancedIntOption("lambda", 5);
+ * @endcode
+ *
+ * For now, we only have detailed documentation for the CMAES algorithm.
+ *
+ * <h4> CMAES </h4>
+ *
+ * This is the c-cmaes algorithm written by Niko Hansen
+ * (https://github.com/cma-es/c-cmaes). To learn about the algorithm, read
+ * Hansen's tutorial (https://www.lri.fr/~hansen/cmatutorial.pdf). For an
+ * example of usage, see the CMAESOptimization.cpp example.
+ *
+ * Some notes:
+ * - This algorithm obeys parameter limits.
+ * - This is a derivative-free optimization algorithm, so methods like the
+ *   following have no effect:
+ *      - Optimizer::useNumericalGradient
+ *      - Optimizer::setDifferentiatorMethod
+ *      - Optimizer::setLimitedMemoryHistory
+ *      - OptimizerSystem::gradientFunc
+ *      - OptimizerSystem::hessian
+ * - This algorithm does not obey constraint functions, so methods like the
+ *   following have no effect:
+ *      - Optimizer::setConstraintTolerance
+ *      - Optimizer::useNumericalJacobian
+ *      - OptimizerSystem::constraintFunc
+ *      - OptimizerSystem::constraintJacobian
+ *      - OptimizerSystem::setNumEqualityConstraints
+ *      - OptimizerSystem::setNumInequalityConstraints
+ *      - OptimizerSystem::setNumLinearEqualityConstraints
+ *      - OptimizerSystem::setNumLinearInequalityConstraints
+ * - The effect of the diagnostics level (see Optimizer::setDiagnosticsLevel)
+ *   is as follows:
+ *      - 0: minimal output to console (warnings, errors), some files are
+ *        written to the current directory (errcmaes.err error log).
+ *      - 1: maximum output to console (including MPI information).
+ *      - 2: more files are written to the current directory.
+ *          - actparcmaes.dat contains the CMAES parameters that were actually
+ *            used in the optimization.
+ *          - allcmaes.dat contains detailed information about the progress of
+ *            the optimization.
+ *      - 3: both 1 and 2 (output to console and files are written).
+ * - Hansen's c-cmaes is typically configured via the cmaes_initials.par and
+ *   cmaes_signals.par files. We currently do not allow the use of either of
+ *   these files; all configuration is done via methods of Optimizer.
+ *
+ * Advanced options:
+ * 
+ * The default values for options whose name begins with "stop" are specified
+ * at https://github.com/CMA-ES/c-cmaes/blob/master/cmaes_initials.par
+ *
+ * - <b>lambda</b> (int; default: depends on number of parameters) The
+ *   population size.
+ * - <b>sigma</b> (real; default: 0.3) Initial step size; same for all
+ *   parameters. A warning is emitted if this is not set.
+ * - <b>seed</b> (int; default: 0, which uses clock time) Seed for the random
+ *   number generator that is used to sample the population from a normal
+ *   distribution. See note below.
+ * - <b>maxTimeFractionForEigendecomposition</b> (real; default: 0.2)
+ *   Controls the amount of time spent generating eigensystem
+ *   decompositions. Affects the reproducibility of a solution.
+ * - <b>stopMaxFunEvals</b> (int) Stop optimization after this
+ *   number of evaluations of the objective function.
+ * - <b>stopFitness</b> (real) Stop if function value is smaller than
+ *   stopFitness.
+ * - <b>stopTolFunHist</b> (real) Stop if function value differences of best
+ *   values are smaller than stopTolFunHist.
+ * - <b>stopTolX</b> (real) Stop if step sizes are smaller than stopTolX.
+ * - <b>stopTolUpXFactor</b> (real) Stop if standard deviation increases by
+ *   more than stopTolUpXFactor.
+ * - <b>resume</b> (bool; default: false) c-cmaes allows one to restart/resume
+ *   an optimization that you have performed previously. Sometimes, this is an
+ *   important part of how CMA-ES is used. Also, it is common to increase sigma
+ *   before resuming by editing "sigma" in the resume file; see Hansen's
+ *   tutorial. If this optimization run should resume from the state of a
+ *   previous optimization, set this option to be true. This requires the
+ *   presence of a resume file; specify the name of this file via the
+ *   <b>resume_filename</b> option.  See <b>write_resume_file</b> for how you
+ *   generate such a resume file. When resuming, the initial guess and sigma
+ *   are set from the resume file, so the initial guess and the <b>sigma</b>
+ *   advanced option have no effect.
+ * - <b>resume_filename</b> (str; default: resumecmaes.dat) Name of the resume
+ *   file to use if <b>resume</b> is true.
+ * - <b>write_resume_file</b> (bool; default: false) If you want to resume the
+ *   current optimization in the future, you must ask c-cmaes to write a resume
+ *   file. Do this by setting this option to be true. This file will contain
+ *   the state of a previously-conducted c-cmaes optimization.
+ * - <b>write_resume_filename</b> (str; default: resumecmaes.dat) Name of the
+ *   resume file to write at the end of the optimization. Presumably, you will
+ *   later use the same filename as the value for <b>resume_filename</b>.
+ * - <b>parallel</b> (str) To run the optimization with multiple threads, set
+ *   this to "multithreading". Only use multithreading if your OptimizerSystem
+ *   is threadsafe: you can't reliably modify any mutable variables in your
+ *   OptimizerSystem::objectiveFunc. To run the optimization in parallel on a
+ *   cluster, set this to "mpi"; the objective function will be evaluated
+ *   across multiple processes. See notes below.
+ * - <b>nthreads</b> (int) If the <b>parallel</b> option is set to
+ *   "multithreading", this is the number of threads to use (by default, this
+ *   is the number of threads on the machine). If using MPI, the
+ *   number of processors is controlled via an argument to <tt>mpiexec</tt>,
+ *   <tt>mpirun</tt>, etc.; not here.
+ *
+ * <i> Reproducible output and seeds </i>
+ *
+ * If you want to generate identical results with repeated optimizations for
+ * the same problem, you can set the <b>seed</b> option. In addtion, you MUST
+ * set the <b>maxTimeFractionForEigendecomposition</b> option to be greater or
+ * equal to 1.0.
+ *
+ * @code
+ * opt.setAdvancedIntOption("seed", 42);
+ * opt.setAdvancedRealOption("maxTimeFractionForEigendecomposition", 1);
+ * @endcode
+ *
+ * <i> MPI: Message Passing Interface </i>
+ *
+ * You can use MPI to run an optimization across multiple processors on a
+ * computing cluster. You can also use MPI on your local machine; if you ONLY
+ * plan on using parallelism locally, you should use multithreading instead
+ * (just because it's simpler). With MPI, your entire executable is spawned on
+ * multiple processes. This is significantly different from multithreading, in
+ * which there is only one process.
+ *
+ * Within optimize(), one of the processes--the master node--manages the
+ * overall optimization while the other nodes--the worker nodes--evaluate the
+ * objective function for the master node. In each process, the call to
+ * <tt>optimize()</tt> returns at approximately the same time. Each process
+ * returns the solution (<tt>f</tt>, and <tt>results</tt>).  However, you
+ * probably only want to work with this solution on the master node. See the
+ * code snippet below to see how to manage this.
+ *
+ * Using MPI requires some additional effort on your part. First, you must
+ * install an MPI library and you must have compiled Simbody with the CMake
+ * variable SIMBODY_ENABLE_MPI set to ON.  In your own code, you must
+ * initialize MPI before calling <tt>optimize()</tt>, and you must finalize MPI
+ * afterwards. Your code may look something like this:
+ *
+ * @code
+ * #include <mpi.h>
+ * int main(int argc, char* argv[]) {
+ *     MPI_Init(&argc, &argv);
+ *     int myRank = 0;
+ *     MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
+ *     MyOptimizerSystem sys;
+ *     Optimizer opt(sys, SimTK::CMAES);
+ *     opt.setAdvancedStrOption("parallel", "mpi");
+ *     SimTK::Vector results; results.setToZero();
+ *     Real f = opt.optimize(results);
+ *     if (myRank == 0) std::cout << "Result: " << f << std::endl;
+ *     MPI_Finalize();
+ *     return 0;
+ * };
+ * @endcode
+ *
+ * To run your executable using MPI across multiple processes, you use a
+ * command like:
+ *
+ * @code
+ * mpirun -n 8 myexecutable
+ * @endcode
+ *
+ * See the documentation for your computing cluster for the specifics of using
+ * MPI on your cluster.
+ * See CMAESOptimization.cpp for a working example.
+ *
  */
 class SimTK_SIMMATH_EXPORT Optimizer {
 public:
@@ -259,12 +458,12 @@ public:
 
 
     /// Set the maximum number of iterations allowed of the optimization
-    /// method's outer / stepping loop. Most optimizers also have an inner loop
-    /// ("line search") which is / also iterative but is not affected by this
-    /// setting. Inner loop convergence is / typically prescribed by theory, and
-    /// failure there is often an indication of / an ill-formed problem.
+    /// method's outer stepping loop. Most optimizers also have an inner loop
+    /// ("line search") which is also iterative but is not affected by this
+    /// setting. Inner loop convergence is typically prescribed by theory, and
+    /// failure there is often an indication of an ill-formed problem.
     void setMaxIterations( int iter );
-    /// Set the maximum number of previous hessians used in a limitied memory
+    /// Set the maximum number of previous hessians used in a limited memory
     /// hessian approximation.
     void setLimitedMemoryHistory( int history );
     /// Set the level of debugging info displayed.
