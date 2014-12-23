@@ -250,6 +250,15 @@ else()
     set(inst_set_to_use ${default_build_inst_set})
 endif()
 
+## OpenMP
+# This is used to parallelize ForceImpl::calcForce.
+# MSVC 2013 supports OpenMP 2.0. GCC 4.9 supports OpenMP 4.0.
+# Clang does not support OpenMP yet.
+# If we dont find OpenMP, it's no issue; we just won't be able to parallelize.
+FIND_PACKAGE(OpenMP)
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+
 ## When building in any of the Release modes, tell gcc/clang to use 
 ## not-quite most agressive optimization.  Here we 
 ## are specifying *all* of the Release flags, overriding CMake's defaults.
@@ -469,6 +478,8 @@ ELSE()
         SET(MATH_LIBS_TO_USE_VN ${LAPACK_BEING_USED} pthreadVC2)
     endif()
 ENDIF()
+
+
 
 #
 # Allow automated build and dashboard.

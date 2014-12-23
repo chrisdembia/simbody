@@ -292,16 +292,20 @@ public:
     GeneralForceSubsystemRep()
      : ForceSubsystemRep("GeneralForceSubsystem", "0.0.1")
     {
+        /* TODO
         calcForcesExecutor = new ParallelExecutor;
         calcForcesTask = new CalcForcesTask(*calcForcesExecutor);
+        */
     }
     
     ~GeneralForceSubsystemRep() {
         // Delete in reverse order to be nice to heap system.
         for (int i = (int)forces.size()-1; i >= 0; --i)
             delete forces[i]; 
+        /* TODO
         delete calcForcesExecutor;
         delete calcForcesTask;
+        */
     }
     
     ForceIndex adoptForce(Force& force) {
@@ -353,10 +357,12 @@ public:
     }
 
     void setNumberOfThreads(unsigned int numThreads) {
+        /* TODO
         delete calcForcesExecutor;
         delete calcForcesTask;
         calcForcesExecutor = new ParallelExecutor(numThreads);
         calcForcesTask = new CalcForcesTask(*calcForcesExecutor);
+        */
     }
 
     // These override default implementations of virtual methods in the 
@@ -473,6 +479,7 @@ public:
 
         // Track the enabled forces and whether they should be parallelized.
         // TODO is this expensive?
+        /*
         Array_<Force*> enabledNonParallelForces;
         Array_<Force*> enabledParallelForces;
         // Avoid repeatedly allocating memory.
@@ -485,7 +492,7 @@ public:
                 else
                     enabledNonParallelForces.push_back(forces[i]);
             }
-        }
+        }*/
 
         // Short circuit if we're not doing any caching here. Note that we're
         // checking whether the *index* is valid (i.e. does the cache entry
@@ -493,16 +500,31 @@ public:
         if (!cachedForcesAreValidCacheIndex.isValid()) {
 
             // Call calcForce() on all Forces, in parallel.
-            calcForcesTask->calcForceAll(s,
+            /*calcForcesTask->calcForceAll(s,
                     enabledNonParallelForces, enabledParallelForces,
-                    rigidBodyForces, particleForces, mobilityForces);
-            /*
-            for (int i = 0; i < (int)forces.size(); ++i) {
-                if (forceEnabled[i])
-                    forces[i]->getImpl().calcForce
-                        (s, rigidBodyForces, particleForces, mobilityForces);
+                    rigidBodyForces, particleForces, mobilityForces);*/
+            #pragma omp parallel
+            {
+                Vector_<SpatialVec> rbf(rigidBodyForces.size());
+                rbf.setToZero();
+                Vector_<Vec3> pf(particleForces.size());
+                pf.setToZero();
+                Vector mf(mobilityForces.size());
+                mf.setToZero();
+                #pragma omp for
+                for (int i = 0; i < (int)forces.size(); ++i) {
+                    if (forceEnabled[i])
+                        forces[i]->getImpl().calcForce
+                            //(s, rigidBodyForces, particleForces, mobilityForces);
+                            (s, rbf, pf, mf);
+                }
+                #pragma omp critical
+                {
+                    rigidBodyForces += rbf;
+                    particleForces += pf;
+                    mobilityForces += mf;
+                }
             }
-            */
 
             // Allow forces to do their own realization, but wait until all
             // forces have executed calcForce(). TODO: not sure if that is
@@ -541,43 +563,79 @@ public:
 
             // Run through all the forces, accumulating directly into the
             // force arrays or indirectly into the cache as appropriate.
-            calcForcesTask->calcForceCachedAndNonCached(s,
+            /*calcForcesTask->calcForceCachedAndNonCached(s,
                     enabledNonParallelForces, enabledParallelForces,
                     rigidBodyForces, particleForces, mobilityForces,
                     rigidBodyForceCache, particleForceCache,
-                    mobilityForceCache);
+                    mobilityForceCache);*/
 
-            /* TODO leaving this here in case we allow not parallelizing.
-            for (int i = 0; i < (int) forces.size(); ++i) {
-                if (!forceEnabled[i]) continue;
-                const ForceImpl& impl = forces[i]->getImpl();
-                if (impl.dependsOnlyOnPositions())
-                    impl.calcForce(s, rigidBodyForceCache, particleForceCache, 
-                                      mobilityForceCache);
-                else // ordinary velocity dependent force
-                    impl.calcForce(s, rigidBodyForces, particleForces, 
-                                      mobilityForces);
+            // TODO leaving this here in case we allow not parallelizing.
+            #pragma omp parallel
+            {
+                Vector_<SpatialVec> rbf(rigidBodyForces.size());
+                rbf.setToZero();
+                Vector_<Vec3> pf(particleForces.size());
+                pf.setToZero();
+                Vector mf(mobilityForces.size());
+                mf.setToZero();
+                Vector_<SpatialVec> rbfc(rigidBodyForces.size());
+                rbfc.setToZero();
+                Vector_<Vec3> pfc(particleForces.size());
+                pfc.setToZero();
+                Vector mfc(mobilityForces.size());
+                mfc.setToZero();
+                #pragma omp for
+                for (int i = 0; i < (int) forces.size(); ++i) {
+                    if (!forceEnabled[i]) continue;
+                    const ForceImpl& impl = forces[i]->getImpl();
+                    if (impl.dependsOnlyOnPositions())
+                        impl.calcForce(s, rbfc, pfc, mfc);
+                    else // ordinary velocity dependent force
+                        impl.calcForce(s, rbf, pf, mf);
+                }
+                #pragma omp critical
+                {
+                    rigidBodyForces += rbf;
+                    particleForces += pf;
+                    mobilityForces += mf;
+                    rigidBodyForceCache += rbfc;
+                    particleForceCache += pfc;
+                    mobilityForceCache += mfc;
+                }
             }
-            */
 
             cachedForcesAreValid = true;
         } else {
 
             // Cache already valid; just need to do the non-cached ones (the
             // ones for which dependsOnlyOnPositions is false).
-            calcForcesTask->calcForceNonCached(s,
+            /*calcForcesTask->calcForceNonCached(s,
                     enabledNonParallelForces, enabledParallelForces,
-                    rigidBodyForces, particleForces, mobilityForces);
+                    rigidBodyForces, particleForces, mobilityForces);*/
 
-            /* TODO leaving this here in case we allow not parallelizing.
-            for (int i = 0; i < (int) forces.size(); ++i) {
-                if (!forceEnabled[i]) continue;
-                const ForceImpl& impl = forces[i]->getImpl();
-                if (!impl.dependsOnlyOnPositions())
-                    impl.calcForce(s, rigidBodyForces, particleForces, 
-                                      mobilityForces);
+            // TODO leaving this here in case we allow not parallelizing.
+            #pragma omp parallel
+            {
+                Vector_<SpatialVec> rbf(rigidBodyForces.size());
+                rbf.setToZero();
+                Vector_<Vec3> pf(particleForces.size());
+                pf.setToZero();
+                Vector mf(mobilityForces.size());
+                mf.setToZero();
+                #pragma omp for
+                for (int i = 0; i < (int) forces.size(); ++i) {
+                    if (!forceEnabled[i]) continue;
+                    const ForceImpl& impl = forces[i]->getImpl();
+                    if (!impl.dependsOnlyOnPositions())
+                        impl.calcForce(s, rbf, pf, mf);
+                }
+                #pragma omp critical
+                {
+                    rigidBodyForces += rbf;
+                    particleForces += pf;
+                    mobilityForces += mf;
+                }
             }
-            */
         }
 
         // Accumulate the values from the cache into the global arrays.
