@@ -2,24 +2,9 @@
 # framework to run Simbody's tests with every GitHub push or pull-request.
 language: cpp
 
-sudo: false
-
-os:
-  - linux
-
 compiler:
   - gcc
   - clang
-
-addons:
-  apt:
-    sources:
-      - ubuntu-toolchain-r-test
-    packages:
-      - liblapack-dev
-      - freeglut3-dev
-      - libxi-dev
-      - libxmu-dev
 
 env:
   # Each line is a separate build in the build matrix. A build in the build
