@@ -40,6 +40,9 @@ before_install:
   # This grep command is invalid on osx.
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then if grep --recursive --include={*.cpp,*.c,*.h,*.md,*.yml,*.cmake.*.xml,*.html,*.in,*.txt} -P "\t" . ; then echo "Tabs found in the lines shown above. See CONTRIBUTING.md about tabs."; false; else echo "Repo passed no-tabs check."; fi; else echo "No-tabs check not performed."; fi
 
+  - wget http://www.cmake.org/files/v3.2/cmake-3.2.1-Linux-x86_64.sh
+  - sh cmake-3.2.1-Linux-x86_64.sh
+
 before_script:
   - mkdir ~/simbody-build && cd ~/simbody-build
   # Configure.
