@@ -28,7 +28,7 @@
 
 #include "simmath/internal/common.h"
 #include "IpOpt/IpStdCInterface.h"
-#include "IpOpt/IpReturnCodes.h"
+#include "coin/IpReturnCodes.h"
 
 #include "simmath/Optimizer.h"
 #include "simmath/internal/OptimizerRep.h"
