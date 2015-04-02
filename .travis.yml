@@ -7,8 +7,9 @@ sudo: false
 os:
   - linux
 
+cache: ccache
+
 compiler:
-  - gcc
   - clang
 
 addons:
