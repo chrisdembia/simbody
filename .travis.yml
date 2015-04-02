@@ -56,7 +56,7 @@ before_script:
 
 script:
   ## Test Simbody.
-  - $HOME/cmake-install/bin/ctest -j8 --output-on-failure
+  #- $HOME/cmake-install/bin/ctest -j8 --output-on-failure
 
   ## Make sure we can install with no issues.
   - make -j8 install
