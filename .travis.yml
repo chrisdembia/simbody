@@ -20,6 +20,7 @@ addons:
       - freeglut3-dev
       - libxi-dev
       - libxmu-dev
+      - g++-4.8
 
 env:
   # Each line is a separate build in the build matrix. A build in the build
