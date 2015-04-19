@@ -11,8 +11,8 @@ cache:
   - directories: $HOME/.ccache
 
 compiler:
-  #- clang
-  - gcc
+  - clang
+  #- gcc
 
 addons:
   apt:
@@ -33,7 +33,7 @@ env:
   # should be space-delimited. For example,
   # - ABC=ON DEF=OFF GHI=ON
   # Simbody 3.6 and up requires c++11
-  - BTYPE=Release USE_CCACHE=1 CCACHE_COMPRESS=1
+  - BTYPE=Release USE_CCACHE=1 CCACHE_COMPRESS=1 CCACHE_CPP2=1 # for Clang to work with ccache.
 
 before_install:
   ## Ensure that there are no tabs in source code.
