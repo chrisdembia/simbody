@@ -2,6 +2,8 @@
 # framework to run Simbody's tests with every GitHub push or pull-request.
 language: cpp
 
+sudo: false
+
 os:
   - linux
   - osx
