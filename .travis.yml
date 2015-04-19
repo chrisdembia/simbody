@@ -7,7 +7,8 @@ sudo: false
 os:
   - linux
 
-cache: ccache
+cache: 
+  - directories: $HOME/.ccache
 
 compiler:
   #- clang
@@ -34,6 +35,8 @@ env:
   # - ABC=ON DEF=OFF GHI=ON
   # Simbody 3.6 and up requires c++11
   - BTYPE=Release
+  - USE_CCACHE=1
+  - CCACHE_COMPRESS=1
 
 before_install:
   ## Ensure that there are no tabs in source code.
