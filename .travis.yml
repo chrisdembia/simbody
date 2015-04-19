@@ -7,13 +7,12 @@ sudo: false
 os:
   - linux
 
-
 cache: 
   - directories: $HOME/.ccache
 
 compiler:
   - clang
-  #- gcc
+  - gcc
 
 addons:
   apt:
