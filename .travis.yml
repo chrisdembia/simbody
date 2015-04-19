@@ -2,18 +2,22 @@
 # framework to run Simbody's tests with every GitHub push or pull-request.
 language: cpp
 
+os:
+ - linux
+ - osx
+
+compiler:
+ - clang
+ - gcc
+ 
+matrix:
+  exclude:
+    - os: osx
+      compiler: gcc
+
 cache: 
   - directories: $HOME/.ccache
 
-matrix:
-  include:
-    - os: osx
-    - os: linux
-      compiler: clang
-      sudo: false
-    - os: linux
-      compiler: gcc
-      sudo: false
       
 addons:
   apt:
