@@ -11,8 +11,8 @@ os:
 cache: ccache
 
 compiler:
-  - clang
-  #- gcc
+  #- clang
+  - gcc
 
 
 addons:
@@ -48,9 +48,10 @@ before_install:
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then if grep --recursive --include={*.cpp,*.c,*.h,*.md,*.yml,*.cmake.*.xml,*.html,*.in,*.txt} -P "\t" . ; then echo "Tabs found in the lines shown above. See CONTRIBUTING.md about tabs."; false; else echo "Repo passed no-tabs check."; fi; else echo "No-tabs check not performed."; fi
   
   - export PATH=$(whereis -b ccache |grep -o '\S*lib\S*'):$PATH
-  #- if [ "$CXX" = "g++" ]; then export CXX=g++-4.8 && export CC=gcc-4.8; fi;
+  - echo $PATH
+  - if [ "$CXX" = "g++" ]; then export CXX=g++-4.8 && export CC=gcc-4.8; fi;
   # For some reason Travis CI clang compiler toolchain installation does not have symlink in the ccache symlinks directory, so workaround it
-  - if [ "$CC"  == "clang" ]; then ln -s $(which ccache) $HOME/clang && ln -s $(which ccache) $HOME/clang++ && export PATH=$HOME:$PATH; fi
+  #- if [ "$CC"  == "clang" ]; then ln -s $(which ccache) $HOME/clang && ln -s $(which ccache) $HOME/clang++ && export PATH=$HOME:$PATH; fi
 
 before_script:
   - mkdir ~/simbody-build && cd ~/simbody-build
