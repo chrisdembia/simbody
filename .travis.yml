@@ -60,8 +60,8 @@ before_install:
   # For some reason Travis CI clang compiler toolchain installation does not have symlink in the ccache symlinks directory, so workaround it
   - if [ "$CC"  == "clang" ]; then ln -s $(which ccache) $HOME/clang && ln -s $(which ccache) $HOME/clang++ && export PATH=$HOME:$PATH; fi
   # https://github.com/weitjong/Urho3D/blob/master/.travis.yml
-  - if [ "$CC" == "clang" ]; then export CC=clang -fcolor-diagnostics; fi;
-  - if [ "$CXX" == "clang++" ]; then export CX=clang++ -fcolor-diagnostics; fi;
+  - if [ "$CC" == "clang" ]; then export CC="clang -fcolor-diagnostics"; fi;
+  - if [ "$CXX" == "clang++" ]; then export CX="clang++ -fcolor-diagnostics"; fi;
 
 before_script:
   - mkdir ~/simbody-build && cd ~/simbody-build
