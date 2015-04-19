@@ -52,6 +52,7 @@ before_install:
   - if [ "$CXX" = "g++" ]; then export CXX=g++-4.8 && export CC=gcc-4.8; fi;
   # For some reason Travis CI clang compiler toolchain installation does not have symlink in the ccache symlinks directory, so workaround it
   #- if [ "$CC"  == "clang" ]; then ln -s $(which ccache) $HOME/clang && ln -s $(which ccache) $HOME/clang++ && export PATH=$HOME:$PATH; fi
+  # https://github.com/weitjong/Urho3D/blob/master/.travis.yml
 
 before_script:
   - mkdir ~/simbody-build && cd ~/simbody-build
