@@ -11,8 +11,8 @@ os:
 cache: ccache
 
 compiler:
-  #- clang
-  - gcc
+  - clang
+  #- gcc
 
 
 addons:
@@ -46,6 +46,9 @@ before_install:
   # (e.g., literally a \t in a source file).
   # This grep command is invalid on osx.
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then if grep --recursive --include={*.cpp,*.c,*.h,*.md,*.yml,*.cmake.*.xml,*.html,*.in,*.txt} -P "\t" . ; then echo "Tabs found in the lines shown above. See CONTRIBUTING.md about tabs."; false; else echo "Repo passed no-tabs check."; fi; else echo "No-tabs check not performed."; fi
+  
+  #- if [ "$CXX" = "g++" ]; then export CXX=g++-4.8 && export CC=gcc-4.8; fi;
+  - export PATH=/usr/lib/ccache:$PATH
 
 before_script:
   - mkdir ~/simbody-build && cd ~/simbody-build
