@@ -33,7 +33,7 @@ env:
   # should be space-delimited. For example,
   # - ABC=ON DEF=OFF GHI=ON
   # Simbody 3.6 and up requires c++11
-  - BTYPE=Release USE_CCACHE=1 CCACHE_COMPRESS=1 CCACHE_CPP2=1 # for Clang to work with ccache.
+  - BTYPE=Release USE_CCACHE=1 CCACHE_COMPRESS=1 CCACHE_CPP2=1 CCACHE_MAXSIZE=100M # for Clang to work with ccache.
 
 before_install:
   ## Ensure that there are no tabs in source code.
