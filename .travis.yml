@@ -65,11 +65,12 @@ before_install:
   # Make sure we use the newer gcc.
   - if [[ "$TRAVIS_OS_NAME" = "linux" && "$CXX" = "g++" ]]; then export CXX="g++-4.8" CC="gcc-4.8"; fi
   
-  ## Use ccache.
+  ## Set up ccache.
   # Lots of this is borrowed from https://github.com/weitjong/Urho3D/blob/master/.travis.yml.
   # Put /usr/lib/ccache on the path.
   - export PATH=$(whereis -b ccache |grep -o '\S*lib\S*'):$PATH
-  # For some reason Travis CI clang compiler toolchain installation does not have symlink in the ccache symlinks directory, so workaround it
+  # For some reason the Travis CI clang compiler toolchain installation does not
+  # have a symlink in the ccache symlinks directory, so workaround it
   - if [ "$CC"  == "clang" ]; then ln -s $(which ccache) $HOME/clang && ln -s $(which ccache) $HOME/clang++ && export PATH=$HOME:$PATH; fi
   # Without the following lines, ccache causes clang to not print in color.
   - if [ "$CC" == "clang" ]; then export CC="clang -fcolor-diagnostics"; fi;
