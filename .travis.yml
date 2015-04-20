@@ -34,11 +34,14 @@ addons:
   # Dependencies on linux.
   apt:
     sources:
+      # For gcc >= 4.8
       - ubuntu-toolchain-r-test
+      # For cmake >= 2.8.8
       - kubuntu-backports
     packages:
       - cmake
       - liblapack-dev
+      # Next 3 are for the visualizer.
       - freeglut3-dev
       - libxi-dev
       - libxmu-dev
