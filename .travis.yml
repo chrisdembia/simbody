@@ -88,7 +88,7 @@ script:
   - make -j8 install
   
   # Zero the cache statistics.
-  - ccache -z
+  #- ccache -z -M 100M
   
 before_cache:
   # Show cache statistics.
