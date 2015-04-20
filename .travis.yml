@@ -86,3 +86,10 @@ script:
 
   ## Make sure we can install with no issues.
   - make -j8 install
+  
+  # Zero the cache statistics.
+  - ccache -z
+  
+before_cache:
+  # Show cache statistics.
+  - ccache -s 
