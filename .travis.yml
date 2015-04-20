@@ -25,7 +25,6 @@ env:
     - CCACHE_COMPRESS=1
     # for Clang to work with ccache.
     - CCACHE_CPP2=1
-    - CCACHE_MAXSIZE=100M 
   
 cache: 
   - directories: $HOME/.ccache
@@ -90,7 +89,7 @@ script:
   ## Make sure we can install with no issues.
   - make -j8 install
   
-  # Zero the cache statistics.
+  # Maximum size of cache is 100 MB.
   - ccache -M 100M
   
 before_cache:
