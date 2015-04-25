@@ -1,5 +1,4 @@
 # visit the following directories to gather up source
-add_subdirectory(src/IpOpt)
 add_subdirectory(src/c-cmaes)
 
 # add in local source and headers here

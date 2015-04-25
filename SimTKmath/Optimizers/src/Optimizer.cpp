@@ -25,7 +25,6 @@
 
 #include "LBFGSOptimizer.h"
 #include "LBFGSBOptimizer.h"
-#include "InteriorPointOptimizer.h"
 #include "CFSQPOptimizer.h"
 #include "CMAESOptimizer.h"
 #include <string>
@@ -38,7 +37,6 @@ Optimizer::~Optimizer() {
 
 bool Optimizer::isAlgorithmAvailable(OptimizerAlgorithm algorithm) {
     switch(algorithm) {
-        case InteriorPoint: return InteriorPointOptimizer::isAvailable();
         case LBFGS:         return LBFGSOptimizer::isAvailable();
         case LBFGSB:        return LBFGSBOptimizer::isAvailable();
 #if SimTK_DEFAULT_PRECISION==2 // double only
@@ -98,7 +96,7 @@ Optimizer::constructOptimizerRep( const OptimizerSystem& sys, OptimizerAlgorithm
     // if constructor specifies which algorithm, use it else select based on
     // problem paramters 
     if ( algorithm == InteriorPoint ) {
-        newRep = (OptimizerRep *) new InteriorPointOptimizer( sys  );
+        throw Exception::Base("No InteriorPoint.");
     } else if( algorithm == LBFGSB ) {
         newRep = (OptimizerRep *) new LBFGSBOptimizer( sys  );
     } else if( algorithm == LBFGS ) {
@@ -129,7 +127,7 @@ Optimizer::constructOptimizerRep( const OptimizerSystem& sys, OptimizerAlgorithm
 
     if(!newRep) { 
         if( sys.getNumConstraints() > 0)   {
-            newRep = (OptimizerRep *) new InteriorPointOptimizer( sys  );
+            throw Exception::Base("No InteriorPoint.");
         } else if( sys.getHasLimits() ) {
             newRep = (OptimizerRep *) new LBFGSBOptimizer( sys  );
         } else {
