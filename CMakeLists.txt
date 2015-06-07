@@ -15,10 +15,6 @@ cmake_minimum_required(VERSION 2.8.8)
 if(COMMAND cmake_policy)
     cmake_policy(SET CMP0003 NEW)
     cmake_policy(SET CMP0005 NEW)
-    if(NOT (${CMAKE_VERSION} VERSION_LESS 3.0))
-        # MACOSX_RPATH enabled by default; policy introduced with cmake 3.0.
-        cmake_policy(SET CMP0042 NEW)
-    endif()
 endif(COMMAND cmake_policy)
 
 PROJECT(Simbody)
@@ -252,6 +248,41 @@ if (BUILD_INST_SET)
     set(inst_set_to_use ${BUILD_INST_SET})
 else()
     set(inst_set_to_use ${default_build_inst_set})
+endif()
+
+## On APPLE, use MACOSX_RPATH.
+if(APPLE AND NOT (${CMAKE_VERSION} VERSION_LESS 2.8.12))
+    # CMake 2.8.12 introduced the ability to set RPATH for shared libraries on
+    # OSX. This helps executables find the libraries they depend on without
+    # having to set the DYLD_LIBRARY_PATH environment variable.
+    # The code below is all taken from the link below, and implements the
+    # scenario "Always use full RPATH".
+    # http://www.cmake.org/Wiki/CMake_RPATH_handling
+    # Note: the RPATH won't succeed if the libraries are moved; in this case,
+    # one will still need to set DYLD_LIBRARY_PATH (or alter the RPATH in the
+    # executables/libraries that depend on Simbody's libraries).
+    set(CMAKE_MACOSX_RPATH ON)
+
+    # Use, i.e. don't skip, the full RPATH for the build tree.
+    SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
+
+    # when building, don't use the install RPATH already
+    # (but later on when installing).
+    SET(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE) 
+
+    SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_FULL_LIBDIR}")
+
+    # Add the automatically determined parts of the RPATH
+    # which point to directories outside the build tree to the install RPATH.
+    SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+    # The RPATH to be used when installing, but only if it's not a system
+    # directory.
+    LIST(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES
+        "${CMAKE_INSTALL_FULL_LIBDIR}" isSystemDir)
+    IF("${isSystemDir}" STREQUAL "-1")
+        SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_FULL_LIBDIR}")
+    ENDIF("${isSystemDir}" STREQUAL "-1")
 endif()
 
 ## When building in any of the Release modes, tell gcc/clang to use
