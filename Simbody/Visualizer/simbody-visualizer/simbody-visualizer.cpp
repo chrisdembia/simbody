@@ -1925,11 +1925,13 @@ static void writeImage(const string& filename) {
     glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, frameBuffer);
     glGenRenderbuffersEXT(1, &colorBuffer);
     glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, colorBuffer);
-    glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_RGB8, width, height);
+    //glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_RGB8, width, height);
+    glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, 2, GL_RGB8, width, height);
     glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_RENDERBUFFER_EXT, colorBuffer);
     glGenRenderbuffersEXT(1, &depthBuffer);
     glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, depthBuffer);
-    glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT24, width, height);
+    //glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT24, width, height);
+    glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, 2, GL_DEPTH_COMPONENT24, width, height);
     glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, depthBuffer);
 
     // Render the image and load it into memory.
