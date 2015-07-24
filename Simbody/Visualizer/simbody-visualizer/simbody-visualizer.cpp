@@ -1918,6 +1918,10 @@ static void writeImage(const string& filename) {
     int width = ((viewWidth+3)/4)*4; // must be a multiple of 4 pixels
     int height = viewHeight;
 
+    // Set antialiasing, even when writing an image.
+    if (shouldAntialias) glEnable(GL_MULTISAMPLE);
+    else glDisable(GL_MULTISAMPLE);
+
     // Create offscreen buffers for rendering the image.
 
     GLuint frameBuffer, colorBuffer, depthBuffer;
