@@ -101,6 +101,8 @@ public:
         for (int i = 0; i < M; ++i)
             this->updElt(i, 0) = v(i);
     }
+    Vector_(std::initializer_list<ELT> ilist)
+    :   Base(ilist.size()) {}
     /**@}**/
 
     /** @name                  View constructors

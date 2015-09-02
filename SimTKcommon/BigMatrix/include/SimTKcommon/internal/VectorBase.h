@@ -85,6 +85,8 @@ public:
     /// from another because Simmatrix may pack its elements more densely than C++.
     VectorBase(int m, const ELT* cppInitialValues)
     :   Base(MatrixCommitment::Vector(),m,1,cppInitialValues) {}
+    VectorBase(std::initializer_list<ELT> ilist)
+    :   VectorBase(ilist.size(), ilist.begin()) {} // invoke above constructor for ELT*
     /// @}
 
     //  ------------------------------------------------------------------------

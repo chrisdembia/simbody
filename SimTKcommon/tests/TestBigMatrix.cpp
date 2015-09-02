@@ -104,6 +104,62 @@ void testTransform() {
     SimTK_TEST(~vs*R == -(-~vs*R));
 }
 
+template <class T>
+static void takeAVector(const Vector_<T>& vector) {
+}
+
+void testInitializerList() {
+    // This test is based off a similar test from TestArray.cpp
+    {
+        Vector v1{}; // Should call default constructor
+        SimTK_TEST(v1.size() == 0);
+        Vector v2{3}; // Should be 1-element initializer list
+        SimTK_TEST(v2.size()==1 && v2[0]==3);
+        Vector v3(3); // Should be a 3-element uninitialized list
+        SimTK_TEST(v3.size()==3);
+
+        Vector v4 = {1,2,2.5,.125}; // initlist construction
+        //TODO SimTK_TEST(v4 == std::vector<double>({1,2,2.5,.125}));
+        v4 = {2,4,5};                   // implicit conversion, then move
+        //TODO SimTK_TEST(v4 == std::vector<double>({2.,4.,5.}));
+        //takeAVector<int>({2,3,4}); // implicit conversion to Vector_<int>
+        //takeAVector<double>({1.2,3,4}); // implicit conversion to Vector_<double>
+    }
+
+        /* TODO
+    // Use a more complex template argument.
+    {
+        Vector_<Vec3> v1{};
+        SimTK_TEST(v1.size() == 0);
+        Vector_<Vec3> v2{Vec3(1.5, 3.2, 7.2)};
+        SimTK_TEST(v2.size() == 1);
+        SimTK_TEST(v2[0] == Vec3(1.5, 3.2, 7.2));
+        Vector_<Vec3>(Vec3()); // TODO should not work.
+
+        Vector_<Vec3> v4 = {Vec3(1, 2, 3), Vec3(5, 3, 2), Vec3(0), Vec3(5)};
+        SimTK_TEST(v4[0] == Vec3(1, 2, 3));
+        SimTK_TEST(v4[1] == Vec3(5, 3, 2));
+        SimTK_TEST(v4[2] == Vec3());
+        SimTK_TEST(v4[3] == Vec3(5));
+        v4 = {Vec3(5, 2, 1), Vec3(6, 2, 4), Vec3(2, 3, 7)};
+        SimTK_TEST(v4.size() == 3);
+        SimTK_TEST(v4[0] == Vec3(5, 2, 1));
+        SimTK_TEST(v4[1] == Vec3(6, 2, 4));
+        SimTK_TEST(v4[2] == Vec3(2, 3, 7));
+        //takeAVector<int>({1, 25, 3});
+        //takeAVector<double>({62.3, 83.1, 0.007});
+        //takeAVector<Vec3>({Vec3(6.3), Vec3(8, 3, 1)});
+        //takeAVector<Vector>({Vector(0), Vector(5, 3.718)});
+
+        // Nested initializer lists.
+        Vector_<Vec3> v5 = { {1.3, 2.5, 7}, {5.3, 6.7, 8.1} };
+        SimTK_TEST(v5.size() == 2);
+        SimTK_TEST(v5[0] == Vec3(1.3, 2.5, 7));
+        SimTK_TEST(v5[1] == Vec3(5.3, 6.7, 8.1));
+    }
+        */
+}
+
 // Make sure we can instantiate all of these successfully.
 namespace SimTK {
 template class MatrixBase<double>;
@@ -290,6 +346,7 @@ int main() {
         SimTK_TEST(vslice5.nrow()==3 && vslice5.ncol()==0);
         vslice5 = Matrix(3,0);
 
+        void testInitializerList();
 
     } catch(const std::exception& e) {
         cout << "exception: " << e.what() << endl;
