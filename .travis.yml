@@ -16,7 +16,17 @@ matrix:
     - os: osx
       compiler: clang
       env: BTYPE=RelWithDebInfo
+addons:
+  # Dependencies on linux.
+  apt:
+    sources:
+      # For gcc >= 4.8
+      - ubuntu-toolchain-r-test
+      - llvm-toolchain-precise-3.6
+    packages:
+      - clang-3.6
 
+      
 before_install:
   ## Ensure that there are no tabs in source code.
   # GREP returns 0 (true) if there are any matches, and
