@@ -24,7 +24,7 @@ addons:
       # For gcc >= 4.9.
       - ubuntu-toolchain-r-test
       # For clang 3.6.
-      - llvm-toolchain-precise
+      - llvm-toolchain-precise-3.5
       # For cmake >= 2.8.11.
       - kubuntu-backports
     packages:
