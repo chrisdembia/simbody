@@ -82,17 +82,28 @@ before_deploy:
   - cd ~
 
 deploy:
-  # Uploads to https://bintray.com/chrisdembia/opensim-testing/simbody/view
-  #            https://dl.bintray.com/chrisdembia/opensim-testing/
-  # See http://docs.travis-ci.com/user/deployment/bintray/ for help.
-  provider: bintray
-  file: $TRAVIS_BUILD_DIR/doc/.bintray.json
-  user: chrisdembia
+  # Uploads to TODO
+  # See http://docs.travis-ci.com/user/deployment/script/ for help.
+  provider: script
+  script: echo 'testing'
   skip_cleanup: true
-  # API key is encrypted with travis.
-  key:
-    secure: MOCuM6THnBR82ClEmWFmqVM/GEiNtimz7dMmWUnmgU4gWAU9DBq0OelifQ6XAAhEqZGz0IbVyRo+zDGWRUEC/EIAb9PhTSg6W/XX+zykAQCsIr3BMvOE6v5MXNz/JMFKxZoFmmrL1WR4a4KUOQANr7derYkIZUy/9CnUkJgQGKE=
-  on:
-    # Upload for both linux and OSX. 
-    branch: master
-    condition: "$CC = clang"
+#  on: TODO
+#    # Upload for both linux and OSX. 
+#    branch: master
+#    condition: "$CC = clang"
+
+# deploy:
+#   # Uploads to https://bintray.com/chrisdembia/opensim-testing/simbody/view
+#   #            https://dl.bintray.com/chrisdembia/opensim-testing/
+#   # See http://docs.travis-ci.com/user/deployment/bintray/ for help.
+#   provider: bintray
+#   file: $TRAVIS_BUILD_DIR/doc/.bintray.json # This file is no longer in the repo.
+#   user: chrisdembia
+#   skip_cleanup: true
+#   # API key is encrypted with travis.
+#   key:
+#     secure: MOCuM6THnBR82ClEmWFmqVM/GEiNtimz7dMmWUnmgU4gWAU9DBq0OelifQ6XAAhEqZGz0IbVyRo+zDGWRUEC/EIAb9PhTSg6W/XX+zykAQCsIr3BMvOE6v5MXNz/JMFKxZoFmmrL1WR4a4KUOQANr7derYkIZUy/9CnUkJgQGKE=
+#   on:
+#     # Upload for both linux and OSX. 
+#     branch: master
+#     condition: "$CC = clang"
