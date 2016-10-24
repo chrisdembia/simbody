@@ -87,6 +87,8 @@ deploy:
   provider: script
   script: echo 'testing'
   skip_cleanup: true
+  on:
+    branch: replace_bintray_with_sourceforge
 #  on: TODO
 #    # Upload for both linux and OSX. 
 #    branch: master
