@@ -81,6 +81,9 @@ before_deploy:
   # Paths in the .bintray.json file are relative to the current directory.
   - cd ~
 
+  # We need this for providing the ssh password when deploying.
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo apt-get --yes install sshpass; fi
+
 deploy:
   # Uploads to TODO
   # See http://docs.travis-ci.com/user/deployment/script/ for help.
