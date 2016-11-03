@@ -24,7 +24,7 @@ matrix:
       env: BTYPE=RelWithDebInfo
 
 addons:
-  - ssh_known_hosts: web.sourceforge.net
+  - ssh_known_hosts: shell.sourceforge.net
 
 before_install:
   ## Ensure that there are no tabs in source code.
