@@ -92,6 +92,8 @@ before_deploy:
   - chmod 600 /tmp/travis_deploy_rsa
   - ssh-add /tmp/travis_deploy_rsa
   - ls -al ~/.ssh
+  - sudo chmod 777 ~/.ssh/known_hosts
+  - ls -al ~/.ssh
 
 deploy:
   # Uploads to TODO
