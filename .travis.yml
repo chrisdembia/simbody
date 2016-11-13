@@ -24,7 +24,7 @@ matrix:
       env: BTYPE=RelWithDebInfo
 
 addons:
-  - ssh_known_hosts: shell.sourceforge.net
+  - ssh_known_hosts: web.sourceforge.net
 
 before_install:
   ## Ensure that there are no tabs in source code.
@@ -91,6 +91,7 @@ before_deploy:
   - eval "$(ssh-agent -s)"
   - chmod 600 /tmp/travis_deploy_rsa
   - ssh-add /tmp/travis_deploy_rsa
+  - ls -al ~/.ssh
 
 deploy:
   # Uploads to TODO
