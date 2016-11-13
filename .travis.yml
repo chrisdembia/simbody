@@ -94,6 +94,7 @@ before_deploy:
   - ls -al ~/.ssh
   - sudo chmod 777 ~/.ssh/known_hosts
   - ls -al ~/.ssh
+  - echo 'StrictHostKeyChecking no' > ~/.ssh/config
 
 deploy:
   # Uploads to TODO
