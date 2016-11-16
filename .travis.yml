@@ -95,12 +95,13 @@ before_deploy:
   - sudo chmod 777 ~/.ssh/known_hosts
   - ls -al ~/.ssh
   - echo 'StrictHostKeyChecking no' > ~/.ssh/config
+  - ls -al ~/binstar-packages
 
 deploy:
   # Uploads to TODO
   # See http://docs.travis-ci.com/user/deployment/script/ for help.
   provider: script
-  script: rsync -az --delete-after ~/binstar-packages/ opensim-bot@web.sourceforge.net:/home/project-web/myosin/htdocs/
+  script: rsync -az ~/binstar-packages/ opensim-bot@web.sourceforge.net:/home/project-web/myosin/htdocs/
   skip_cleanup: true
   on:
     branch: replace_bintray_with_sourceforge
