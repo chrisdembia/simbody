@@ -16,3 +16,7 @@ obj-*
 .*.swo
 # gedit
 *~
+
+# CLion
+cmake-build-*
+.idea

@@ -2401,7 +2401,7 @@ cmaes_random_init( cmaes_random_t *t, long unsigned inseed)
   if (inseed < 1) {
     while ((long) (cloc - clock()) == 0)
       ; /* TODO: remove this for time critical applications? */
-    inseed = (long unsigned)abs((long)(100*time(NULL)+clock()));
+    inseed = (long unsigned)labs((long)(100*time(NULL)+clock()));
   }
   return cmaes_random_Start(t, inseed);
 }
