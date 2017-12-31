@@ -43,11 +43,13 @@ using namespace std;
     #define READ _read
     #define WRITEFUNC _write
     #define CLOSE _close
+    #define SELECT _select
 #else
     #include <unistd.h>
     #define READ read
     #define WRITEFUNC write
     #define CLOSE close
+    #define SELECT select
 #endif
 
 #ifdef _MSC_VER
@@ -171,14 +173,53 @@ class ReadingInterrupted : public std::exception {};
 // This will hang until the expected number of bytes has been received.
 // Throws ReadingInterrupted if the srcPipe is closed.
 static void readDataFromPipe(int srcPipe, unsigned char* buffer, int bytes) {
+    // If the pipe was closed, perhaps because simbody-visualizer was closed,
+    // or shutdownGUI() or ~VisualizerProtocol() was called, we throw a
+    // ReadingInterrupted exception to kill the listener thread.
     int totalRead = 0;
+
     while (totalRead < bytes) {
+        int select_retval;
+
+        // READ is blocking, but we do not want to keep waiting if srcPipe was
+        // closed. So we only READ if data is available, by using SELECT.
+        // SELECT tells us if data is avaiable on the pipe within a timeout.
+        do {
+            // http://man7.org/linux/man-pages/man2/select.2.html
+            fd_set rfds; // File descriptors to watch (just 1 in our case).
+            FD_ZERO(&rfds); // Initialize rfds.
+            FD_SET(srcPipe, &rfds); // Add srcPipe as a file desc. to monitor.
+            // We set a timeout of 1 ms, which should be imperceptible.
+            // tv must be set within the loop because select() may modify tv.
+            struct timeval tv;
+            tv.tv_sec = 0;
+            tv.tv_usec = 1000;
+            select_retval = SELECT(srcPipe+1, // Max file desc.+1; see manpage.
+                    &rfds, // File descriptors for reading.
+                    NULL,  // File descriptors for writing (none).
+                    NULL,  // File descriptors for errors (none).
+                    &tv);
+
+            // If srcPipe is closed, we should stop listening.
+            // The manpage says that SELECT should return 0 for end-of-file,
+            // but it returns -1 ("Bad file descriptor") on Ubuntu, Mac.
+            if (select_retval == -1 && errno == EBADF)
+                throw ReadingInterrupted();
+
+            SimTK_ERRCHK2_ALWAYS(select_retval!=-1,
+                "VisualizerProtocol", "select() failed with errno=%d (%s).",
+                errno, strerror(errno));
+
+            // SELECT returns 0 if it reaches the timeout, and returns a
+            // positive number if there's something available to read.
+        } while (select_retval == 0);
+
+        // Data is available; read it!
         auto retval = READ(srcPipe, buffer + totalRead, bytes - totalRead);
         SimTK_ERRCHK4_ALWAYS(retval!=-1, "VisualizerProtocol",
             "An attempt to read() %d bytes from pipe %d failed with errno=%d (%s).", 
             bytes - totalRead, srcPipe, errno, strerror(errno));
-        // The pipe was closed, perhaps because simbody-visualizer was closed,
-        // or shutdownGUI() or ~VisualizerProtocol() was called.
+
         // Without this check, we end up in an infinite loop if the user closes
         // simbody-visualizer.
         if (retval == 0) throw ReadingInterrupted();
@@ -425,7 +466,10 @@ void VisualizerProtocol::killListenerThreadIfNecessary() {
         // Shut down the listener thread cleanly.
         continueListening = false;
         // Close the read pipe so that the thread stops waiting for data.
-        CLOSE(inPipe); // TODO make this work on Windows.
+        int retval = CLOSE(inPipe); // TODO make this work on Windows.
+        SimTK_ERRCHK2_ALWAYS(retval!=-1, "VisualizerProtocol",
+                "An attempt to close() failed with errno=%d (%s).", 
+                errno, strerror(errno));
         eventListenerThread.join();
     }
 }
